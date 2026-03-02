@@ -1,0 +1,23 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Results (local output)
+results/*
+!results/.gitignore
+
+# Private data (excluded from git; future VCF/WGS artifacts)
+data/private/
+
+# Derived structure cache (computed at run time)
+data/public/structures/cache/
+data/public/structures/[0-9a-f][0-9a-f]*/
+
+# IDE
+.idea/
+.vscode/
+*.swp

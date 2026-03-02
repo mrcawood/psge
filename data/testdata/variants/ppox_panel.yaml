@@ -1,0 +1,18 @@
+# PPOX Phase 1.5 Variant Panel (docs/PHASE1_5_REMAP.md)
+# predict_first mode: R59W/I12T → unknown; R152C/G358R → folding_stability
+
+substrate_binding_impairment:  # legacy key
+  - variant: R59W
+    expected_class: cofactor_binding_perturbation
+  - variant: R152C
+    expected_class: folding_stability_hydrophobic_core
+  - variant: G358R
+    expected_class: folding_stability_hydrophobic_core
+  - variant: I12T
+    expected_class: unknown_mechanism
+
+truncation_misexpression:
+  - variant: "78insC"
+    expected_class: truncation_misexpression
+  - variant: "IVS2-2 a→c"
+    expected_class: truncation_misexpression

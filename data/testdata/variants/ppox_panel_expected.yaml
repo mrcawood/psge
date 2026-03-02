@@ -1,0 +1,21 @@
+# Phase 1.5 panel expected outcomes (ClinGen-aligned)
+# See docs/PHASE1_5_REMAP.md
+
+- variant: R59W
+  expected_primary: cofactor_binding_perturbation
+
+- variant: I12T
+  expected_primary: folding_stability_hydrophobic_core
+  expected_secondary: [targeting_signal_perturbation]
+
+- variant: R152C
+  expected_primary: folding_stability_hydrophobic_core
+
+- variant: G358R
+  expected_primary: folding_stability_hydrophobic_core
+
+- variant: "78insC"
+  expected_primary: truncation_misexpression
+
+- variant: "IVS2-2 a→c"
+  expected_primary: truncation_misexpression

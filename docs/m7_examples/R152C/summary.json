@@ -1,0 +1,33 @@
+{
+  "variant": "R152C",
+  "input_hash": "a8c0ee435f87de7db823607e6434f655c8010ad9fca421b819aa766237bb3648",
+  "mechanism_class": "structural_destabilization",
+  "confidence": "low",
+  "evidence_table": [
+    {
+      "signal": "ddg (mock)",
+      "value": 2.5
+    },
+    {
+      "signal": "flags (mock)",
+      "value": [
+        "destabilizing"
+      ]
+    }
+  ],
+  "interpretation": "Stability analysis suggests destabilization. Mock \u0394\u0394G; FoldX/Rosetta needed for validation.",
+  "limits": "Mock \u0394\u0394G in Phase 1; FoldX/Rosetta needed for validation.",
+  "decision_trace": [
+    "rule: destabilizing_ddg_or_flags (mock) \u2192 structural_destabilization"
+  ],
+  "skipped_steps": [],
+  "backend_status": {
+    "structure_backend": "mock",
+    "stability_backend": "mock",
+    "delta_metrics": "real_rmsd",
+    "sasa": "not_implemented"
+  },
+  "tool_versions": {
+    "psge": "0.1.0"
+  }
+}

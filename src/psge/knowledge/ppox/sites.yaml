@@ -1,0 +1,20 @@
+# PPOX domain annotations (curated from 07_REFERENCES, Qin 2011 FASEB J, 3NKS)
+# Source: Qin et al. 2011 - R59 in FAD binding pocket; 3NKS crystal structure
+# Residue numbering: UniProt P50336 canonical sequence (1-based)
+
+# FAD-binding region (3NKS, Qin 2011 - R59 "electrostatic hindrance in hydrophilic binding pocket")
+# Includes dinucleotide-binding motif and pocket residues
+fad_residues: [9, 10, 11, 12, 13, 14, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63]
+
+# Active site / substrate pocket (overlaps FAD; acifluorfen binding site in 3NKS)
+active_site_residues: [55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65]
+
+# PPOX mitochondrial targeting (N-terminus)
+# - 1–28 aa contains an independently functioning targeting signal; includes LXXXIXXL motif (Leu-8, Ile-12, Leu-15). PMID:12556518
+# - 1–17 aa reported as minimal for efficient targeting in GFP fusion constructs. PMID:16621625
+n_terminal_targeting_signal_end: 28
+n_terminal_targeting_minimal_end: 17
+
+# Membrane association region (if applicable)
+membrane_region_start: null
+membrane_region_end: null

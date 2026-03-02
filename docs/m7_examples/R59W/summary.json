@@ -1,0 +1,31 @@
+{
+  "variant": "R59W",
+  "input_hash": "aec1a21e16b07fe8043ea491cd3b6fba4fd5519d70c353722be37a4d6b4e54db",
+  "mechanism_class": "substrate_binding_impairment",
+  "confidence": "plausible",
+  "evidence_table": [
+    {
+      "signal": "distance_fad",
+      "value": 0.0
+    },
+    {
+      "signal": "distance_active_site",
+      "value": 0.0
+    }
+  ],
+  "interpretation": "Variant near FAD/active site; binding impairment plausible.",
+  "limits": "Distance-based heuristic; structural refinement may change assessment.",
+  "decision_trace": [
+    "rule: near_fad_or_active_site \u2192 substrate_binding_impairment"
+  ],
+  "skipped_steps": [],
+  "backend_status": {
+    "structure_backend": "mock",
+    "stability_backend": "mock",
+    "delta_metrics": "real_rmsd",
+    "sasa": "not_implemented"
+  },
+  "tool_versions": {
+    "psge": "0.1.0"
+  }
+}

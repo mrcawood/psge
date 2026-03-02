@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-02-28T23:06:24.344140+00:00",
+  "input": "R59W",
+  "input_hash": "aec1a21e16b07fe8043ea491cd3b6fba4fd5519d70c353722be37a4d6b4e54db",
+  "config_hash": "8ed4f731d3667616e1cbbbb46707a6da1dd1fdced4eb1988d9d87710d3309751",
+  "compute_profile": "local",
+  "backend_status": {
+    "structure_backend": "mock",
+    "stability_backend": "mock",
+    "delta_metrics": "real_rmsd",
+    "sasa": "not_implemented"
+  }
+}

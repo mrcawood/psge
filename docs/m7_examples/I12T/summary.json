@@ -1,0 +1,27 @@
+{
+  "variant": "I12T",
+  "input_hash": "ca77a6ec8e2a269c3ea02b207391a5daa0bcfebf8efe0e7575187464687ab3db",
+  "mechanism_class": "mitochondrial_targeting_defect",
+  "confidence": "plausible",
+  "evidence_table": [
+    {
+      "signal": "in_targeting_region",
+      "value": true
+    }
+  ],
+  "interpretation": "Variant lies in mitochondrial targeting peptide; sequence/motif analysis indicated.",
+  "limits": "PSGE uses sequence-level targeting annotation; 3D structure less informative here.",
+  "decision_trace": [
+    "rule: in_targeting_region \u2192 mitochondrial_targeting_defect"
+  ],
+  "skipped_steps": [],
+  "backend_status": {
+    "structure_backend": "mock",
+    "stability_backend": "mock",
+    "delta_metrics": "real_rmsd",
+    "sasa": "not_implemented"
+  },
+  "tool_versions": {
+    "psge": "0.1.0"
+  }
+}
