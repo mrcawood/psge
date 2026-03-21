@@ -10,12 +10,13 @@ from psge.utils.panel import load_panel
 PROJECT_ROOT = Path(__file__).parent.parent
 PANEL_PATH = PROJECT_ROOT / "data" / "testdata" / "variants" / "ppox_panel.yaml"
 
-# Expected mechanism classes per docs/PHASE1_5_REMAP.md (predict_first mode)
+# Expected mechanism classes (Phase 1.6: mock stability no longer drives primary)
+# folding_stability primary only when stability_backend is foldx
 EXPECTED = {
     "R59W": "cofactor_binding_perturbation",  # is_in_fad_residue_set fallback (pos 59 in FAD set)
-    "R152C": "folding_stability_hydrophobic_core",
-    "G358R": "folding_stability_hydrophobic_core",
-    "I12T": "unknown_mechanism",  # targeting region excludes cofactor fallback; folding_stability needs FoldX
+    "R152C": "unknown_mechanism",  # mock ddG → secondary only; primary needs FoldX
+    "G358R": "unknown_mechanism",  # mock ddG → secondary only; primary needs FoldX
+    "I12T": "unknown_mechanism",  # targeting region; folding_stability needs FoldX
     "78insC": "truncation_misexpression",
     "IVS2-2 a→c": "truncation_misexpression",
 }

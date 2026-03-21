@@ -1,13 +1,13 @@
-# PPOX Phase 1.5 Variant Panel (docs/PHASE1_5_REMAP.md)
-# predict_first mode: R59W/I12T → unknown; R152C/G358R → folding_stability
+# PPOX Phase 1.5/1.6 Variant Panel (docs/PHASE1_5_REMAP.md)
+# Phase 1.6: mock ddG does not drive primary; R152C/G358R → unknown (folding secondary)
 
 substrate_binding_impairment:  # legacy key
   - variant: R59W
     expected_class: cofactor_binding_perturbation
   - variant: R152C
-    expected_class: folding_stability_hydrophobic_core
+    expected_class: unknown_mechanism  # folding_stability needs real FoldX
   - variant: G358R
-    expected_class: folding_stability_hydrophobic_core
+    expected_class: unknown_mechanism  # folding_stability needs real FoldX
   - variant: I12T
     expected_class: unknown_mechanism
 

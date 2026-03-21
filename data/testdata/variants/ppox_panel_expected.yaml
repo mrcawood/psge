@@ -1,18 +1,20 @@
-# Phase 1.5 panel expected outcomes (ClinGen-aligned)
-# See docs/PHASE1_5_REMAP.md
+# Phase 1.5/1.6 panel expected outcomes (ClinGen-aligned)
+# Phase 1.6: mock ddG does not drive primary; FoldX required for folding_stability
 
 - variant: R59W
   expected_primary: cofactor_binding_perturbation
 
 - variant: I12T
-  expected_primary: folding_stability_hydrophobic_core
-  expected_secondary: [targeting_signal_perturbation]
+  expected_primary: unknown_mechanism
+  expected_secondary: [targeting_signal_perturbation, folding_stability_hydrophobic_core]
 
 - variant: R152C
-  expected_primary: folding_stability_hydrophobic_core
+  expected_primary: unknown_mechanism
+  expected_secondary: [folding_stability_hydrophobic_core]
 
 - variant: G358R
-  expected_primary: folding_stability_hydrophobic_core
+  expected_primary: unknown_mechanism
+  expected_secondary: [folding_stability_hydrophobic_core]
 
 - variant: "78insC"
   expected_primary: truncation_misexpression

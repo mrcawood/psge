@@ -44,7 +44,8 @@ def classify(
     if context and _has_secondary_evidence_targeting(context):
         secondary.append("targeting_signal_perturbation")
 
-    stability_mock = (backend_status or {}).get("stability_backend", "mock") == "mock"
+    _stab = (backend_status or {}).get("stability_backend", "mock")
+    stability_mock = _stab in ("mock", "not_available")
     _destabilizing = (
         stability_result
         and (stability_result.ddg >= 2.0 or "destabilizing" in stability_result.flags)
@@ -98,29 +99,27 @@ def classify(
         )
 
     # 4. stability_or_core -> folding_stability_hydrophobic_core
-    if _destabilizing:
+    # Phase 1.6: Only fire as PRIMARY when stability backend is real (foldx/rosetta).
+    # Mock ddG must not drive primary classification; stability-derived hypotheses
+    # remain secondary/unknown when stability is unavailable.
+    if _destabilizing and not stability_mock:
         evidence = [
             {"signal": "ddg", "value": stability_result.ddg},
             {"signal": "flags", "value": stability_result.flags},
         ]
-        if stability_mock:
-            evidence[0]["signal"] = "ddg (mock)"
-            evidence[1]["signal"] = "flags (mock)"
         sec = secondary.copy()
         return MechanismHypothesis(
             class_="folding_stability_hydrophobic_core",
-            confidence="low" if stability_mock else "plausible",
+            confidence="plausible",
             evidence_table=evidence,
-            interpretation="Stability analysis suggests folding/core destabilization."
-            + (" Mock ΔΔG; FoldX needed for validation." if stability_mock else ""),
-            limits="Mock ΔΔG in Phase 1; FoldX needed for validation.",
-            decision_trace=[
-                "rule: stability_or_core (mock)" + " → folding_stability_hydrophobic_core"
-                if stability_mock
-                else "rule: stability_or_core → folding_stability_hydrophobic_core"
-            ],
+            interpretation="Stability analysis suggests folding/core destabilization.",
+            limits="3D structure and FoldX ΔΔG; static only.",
+            decision_trace=["rule: stability_or_core → folding_stability_hydrophobic_core"],
             secondary_hypotheses=sec,
         )
+    # Mock destabilizing: add folding_stability to secondaries only, fall through to default
+    if _destabilizing and stability_mock:
+        secondary.append("folding_stability_hydrophobic_core")
 
     # 5. default -> unknown_mechanism
     # Filter secondaries to those with evidence; build evidence table for report
