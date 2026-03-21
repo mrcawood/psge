@@ -122,8 +122,9 @@ def reporting(
     config: Config,
     skipped_steps: list[str] | None = None,
     backend_status: dict | None = None,
+    delta: DeltaFeatures | None = None,
 ) -> None:
-    """Reporting: summary.json, report.md (PRD §6)."""
+    """Reporting: summary.json, report.md (PRD §6). Phase 1.6: delta for SASA evidence."""
     from psge.reporting.summary import emit_report, emit_summary
     from psge.utils.backend_status import get_backend_status
 
@@ -137,5 +138,13 @@ def reporting(
         variant_record,
         skipped,
         backend_status,
+        delta,
     )
-    emit_report(results_dir, variant_record.raw, hypothesis, skipped, backend_status)
+    emit_report(
+        results_dir,
+        variant_record.raw,
+        hypothesis,
+        skipped,
+        backend_status,
+        delta,
+    )

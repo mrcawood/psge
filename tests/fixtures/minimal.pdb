@@ -1,0 +1,16 @@
+REMARK Minimal PDB for SASA tests
+ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00  0.00           N
+ATOM      2  CA  ALA A   1       1.458   0.000   0.000  1.00  0.00           C
+ATOM      3  C   ALA A   1       2.009   1.420   0.000  1.00  0.00           C
+ATOM      4  O   ALA A   1       1.251   2.394   0.000  1.00  0.00           O
+ATOM      5  CB  ALA A   1       2.091  -0.764  -1.164  1.00  0.00           C
+ATOM      6  N   GLY A   2       3.323   1.549   0.000  1.00  0.00           N
+ATOM      7  CA  GLY A   2       3.967   2.842   0.000  1.00  0.00           C
+ATOM      8  C   GLY A   2       3.319   3.994   0.894  1.00  0.00           C
+ATOM      9  O   GLY A   2       3.962   4.543   1.803  1.00  0.00           O
+ATOM     10  N   ILE A   3       2.045   4.318   0.623  1.00  0.00           N
+ATOM     11  CA  ILE A   3       1.323   5.389   1.423  1.00  0.00           C
+ATOM     12  C   ILE A   3       0.000   4.891   2.000  1.00  0.00           C
+ATOM     13  O   ILE A   3      -0.894   5.642   2.345  1.00  0.00           O
+ATOM     14  CB  ILE A   3       1.234   6.732   0.712  1.00  0.00           C
+END

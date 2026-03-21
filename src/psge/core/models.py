@@ -36,20 +36,32 @@ class StructurePair:
 
 @dataclass
 class DeltaFeatures:
-    """Alignment/delta output (PRD FR4)."""
+    """Alignment/delta output (PRD FR4). Phase 1.6: extended SASA fields."""
 
     global_rmsd: float
     local_rmsd: float
     sasa_delta: float
     contact_deltas: dict
+    # Phase 1.6: real SASA (BioPython Shrake-Rupley)
+    sasa_total_wt: float | None = None
+    sasa_total_mut: float | None = None
+    delta_sasa_total: float | None = None
+    sasa_residue_wt: dict[int, float] | None = None  # UniProt pos -> SASA
+    sasa_residue_mut: dict[int, float] | None = None
+    delta_sasa_residue: dict[int, float] | None = None
+    sasa_patch_8A: float | None = None  # local patch within 8 Å of mutation (WT only)
+    sasa_mapping_status: str | None = None  # e.g. "mapped" or "residue_missing"
+    sasa_source_pairing: str | None = None  # "same_backend" | "incomparable" (for delta validity)
 
 
 @dataclass
 class StabilityResult:
-    """Stability stage output (PRD FR5)."""
+    """Stability stage output (PRD FR5). Phase 1.6: backend field for provenance."""
 
     ddg: float
     flags: list[str]
+    backend: str = "mock"  # "mock" | "foldx" | "rosetta"
+    foldx_version: str | None = None  # When backend=foldx, for run_manifest
 
 
 @dataclass

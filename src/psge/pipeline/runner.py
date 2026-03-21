@@ -17,12 +17,28 @@ def run(variant: str, config: Config) -> VariantRecord:
     context = stages.context_mapping(variant_record, structure_pair, config)
     from psge.utils.backend_status import get_backend_status
     struct_backend = structure_pair.backend if structure_pair else "mock"
-    backend_status = get_backend_status(structure_backend=struct_backend)
+    stab_backend = stability_result.backend if stability_result else "mock"
+    sasa_backend = (
+        "biopython_shrake_rupley"
+        if delta
+        and (
+            getattr(delta, "sasa_residue_wt", None)
+            or getattr(delta, "sasa_patch_8A", None) is not None
+        )
+        else "not_implemented"
+    )
+    foldx_ver = getattr(stability_result, "foldx_version", None) if stability_result else None
+    backend_status = get_backend_status(
+        structure_backend=struct_backend,
+        stability_backend=stab_backend,
+        sasa=sasa_backend,
+        foldx_version=foldx_ver,
+    )
     hypothesis = stages.mechanism_classifier(
         variant_record, delta, stability_result, context, config, backend_status
     )
     skipped = _skipped_steps(variant_record, structure_pair)
-    stages.reporting(variant_record, hypothesis, config, skipped, backend_status)
+    stages.reporting(variant_record, hypothesis, config, skipped, backend_status, delta)
 
     config_hash = _config_hash(config)
     results_path = Path(config.results_dir).resolve()

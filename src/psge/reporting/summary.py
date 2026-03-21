@@ -7,6 +7,29 @@ from pathlib import Path
 from psge.core.models import Config, MechanismHypothesis, VariantRecord
 
 
+def _sasa_evidence(delta) -> list[dict]:
+    """Build SASA evidence items (Phase 1.6a Option A: local only, no global totals)."""
+    if delta is None:
+        return []
+    ev = []
+    if getattr(delta, "sasa_residue_wt", None):
+        for pos, val in delta.sasa_residue_wt.items():
+            ev.append({"signal": f"sasa_residue_wt_{pos}", "value": round(val, 2)})
+    if getattr(delta, "sasa_residue_mut", None):
+        for pos, val in delta.sasa_residue_mut.items():
+            ev.append({"signal": f"sasa_residue_mut_{pos}", "value": round(val, 2)})
+    if getattr(delta, "delta_sasa_residue", None):
+        for pos, val in delta.delta_sasa_residue.items():
+            ev.append({"signal": f"delta_sasa_residue_{pos}", "value": round(val, 2)})
+    if getattr(delta, "sasa_patch_8A", None) is not None:
+        ev.append({"signal": "sasa_patch_8A", "value": round(delta.sasa_patch_8A, 2)})
+    if getattr(delta, "sasa_mapping_status", None):
+        ev.append({"signal": "sasa_mapping_status", "value": delta.sasa_mapping_status})
+    if getattr(delta, "sasa_source_pairing", None):
+        ev.append({"signal": "sasa_source_pairing", "value": delta.sasa_source_pairing})
+    return ev
+
+
 def emit_summary(
     results_dir: Path,
     variant: str,
@@ -14,19 +37,23 @@ def emit_summary(
     variant_record: VariantRecord,
     skipped_steps: list[str],
     backend_status: dict | None = None,
+    delta=None,
 ) -> Path:
-    """Emit summary.json (machine-readable)."""
+    """Emit summary.json (machine-readable). Phase 1.6: includes SASA when available."""
     from psge.utils.backend_status import get_backend_status
 
     results_dir = Path(results_dir)
     results_dir.mkdir(parents=True, exist_ok=True)
     input_hash = hashlib.sha256(variant.encode()).hexdigest()
+    sasa_ev = _sasa_evidence(delta)
+    evidence_table = list(hypothesis.evidence_table)
+    evidence_table.extend(sasa_ev)
     summary = {
         "variant": variant,
         "input_hash": input_hash,
         "mechanism_class": hypothesis.class_,
         "confidence": hypothesis.confidence,
-        "evidence_table": hypothesis.evidence_table,
+        "evidence_table": evidence_table,
         "interpretation": hypothesis.interpretation,
         "limits": hypothesis.limits,
         "decision_trace": hypothesis.decision_trace,
@@ -35,6 +62,8 @@ def emit_summary(
         "backend_status": backend_status or get_backend_status(),
         "tool_versions": {"psge": "0.1.0"},
     }
+    if sasa_ev:
+        summary["sasa"] = {e["signal"]: e["value"] for e in sasa_ev}
     path = results_dir / "summary.json"
     with open(path, "w") as f:
         json.dump(summary, f, indent=2)
@@ -47,6 +76,7 @@ def emit_report(
     hypothesis: MechanismHypothesis,
     skipped_steps: list[str],
     backend_status: dict | None = None,
+    delta=None,
 ) -> Path:
     """Emit report.md (human-readable)."""
     from psge.utils.backend_status import get_backend_status
@@ -111,6 +141,8 @@ def emit_report(
         "",
     ])
     for row in hypothesis.evidence_table:
+        lines.append(f"- {row.get('signal', '')}: {row.get('value', '')}")
+    for row in _sasa_evidence(delta):
         lines.append(f"- {row.get('signal', '')}: {row.get('value', '')}")
     lines.extend([
         "",
