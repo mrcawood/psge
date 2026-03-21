@@ -26,13 +26,17 @@
 - **Local RMSD:** Per-residue window (default radius 5) around the variant position. Measures local conformation.
 - **Source:** `utils/pdb_rmsd.py` (BioPython Superimposer).
 
-### SASA (Not Implemented)
-- `sasa_delta` in `DeltaFeatures` returns `0.0` (placeholder).
-- Future integration: freesasa or DSSP for solvent-accessible surface area change.
+### SASA (Phase 1.6a — Implemented)
+- **Method:** BioPython Shrake-Rupley algorithm (`Bio.PDB.SASA.ShrakeRupley`).
+- **Fields:** `sasa_total_wt`, `sasa_total_mut`, `delta_sasa_total`, `sasa_residue_wt[pos]`, `sasa_residue_mut[pos]`, `delta_sasa_residue`, optional `sasa_patch_8A` (local patch within 8 Å of mutation).
+- **Source:** `utils/sasa.py`. `backend_status.sasa = "biopython_shrake_rupley"` when computed.
+- **Mapping:** When residue not in structure, SASA outputs are null and `sasa_mapping_status` is set (e.g. `residue_not_in_structure`).
+- **Classifier:** SASA is evidence only; not yet used in primary decision logic.
 
-### Stability (Mock)
-- `ddg` and flags from stability stage use mock backend.
-- Future: FoldX, Rosetta ddg_monomer, or similar.
+### Stability (Phase 1.6b — FoldX optional)
+- **FoldX:** When executable is available (PATH or `FOLDX_PATH`), real ΔΔG via BuildModel on WT structure (3NKS). `backend_status.stability_backend = "foldx"`; `foldx_version` in run_manifest.
+- **Mock fallback:** When FoldX not present, `stability_backend = "mock"`; placeholder ΔΔG. Pipeline does not break.
+- **Classifier policy:** `folding_stability_hydrophobic_core` as **primary** only when `stability_backend` is `foldx` (or rosetta later). Mock ddG does not drive primary classification; stability-derived hypotheses remain secondary/unknown when stability is unavailable.
 
 ---
 
