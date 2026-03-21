@@ -88,7 +88,7 @@ def stability(
     backend = get_stability_backend(config.stability_backend)
     from psge.utils.variant_parse import variant_position
     pos = variant_position(variant_record.parsed)
-    return backend(structure_pair, pos, config)
+    return backend(structure_pair, pos, config, variant_record.parsed)
 
 
 def context_mapping(

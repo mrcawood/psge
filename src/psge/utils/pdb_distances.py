@@ -119,6 +119,25 @@ def _build_uniprot_to_pdb_map(structure, uniprot_seq: str) -> dict[int, tuple]:
     return mapping
 
 
+def get_pdb_residue_for_uniprot(
+    uniprot_pos: int,
+    structure_path: Path,
+    uniprot_sequence: str,
+) -> tuple[str, int] | None:
+    """
+    Return (chain_id, pdb_residue_number) for UniProt position.
+    For FoldX mutation format: WTaa + chain + pdb_num + Mutaa (e.g. RA59W).
+    Returns None if position not in structure.
+    """
+    structure = load_structure(structure_path)
+    mapping = _build_uniprot_to_pdb_map(structure, uniprot_sequence)
+    if uniprot_pos not in mapping or mapping[uniprot_pos] is None:
+        return None
+    chain_id, res = mapping[uniprot_pos]
+    pdb_resnum = res.id[1]
+    return (str(chain_id), int(pdb_resnum))
+
+
 def min_distance_residue_to_ligand(
     uniprot_pos: int,
     structure_path: Path,
@@ -232,3 +251,24 @@ def min_distance_residue_to_site_residues(
         if d is not None and d < min_d:
             min_d = d
     return min_d if min_d != float("inf") else None
+
+
+def get_pdb_residue_for_foldx(
+    uniprot_pos: int,
+    structure_path: Path,
+    uniprot_sequence: str,
+) -> tuple[str, int, str] | None:
+    """
+    Return (chain_id, pdb_residue_number, wt_one_letter_aa) for FoldX mutation format.
+    Returns None if position not in structure.
+    """
+    from Bio.SeqUtils import seq1
+
+    structure = load_structure(structure_path)
+    mapping = _build_uniprot_to_pdb_map(structure, uniprot_sequence)
+    if uniprot_pos not in mapping or mapping[uniprot_pos] is None:
+        return None
+    chain_id, res = mapping[uniprot_pos]
+    pdb_resnum = res.id[1]
+    wt_aa = seq1(res.get_resname())
+    return (str(chain_id), int(pdb_resnum), wt_aa)
