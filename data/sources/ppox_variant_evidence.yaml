@@ -1,0 +1,64 @@
+# Variant ↔ source evidence map (Phase 1.6e)
+
+variants:
+  R59W:
+    psge_computed_evidence:
+      - PDB_3NKS
+      - FOLDX_5_3NKS
+      - SASA_BIOPYTHON_3NKS
+    external_evidence:
+      - source_id: MEISSNER_1996_R59W
+        claim_scope: direct_variant_evidence
+        evidence_tier: functional_assay
+        claim: "R59W has reported reduced PPO enzyme activity (Meissner et al. 1996)."
+        confidence: source_supported
+      - source_id: QIN_2011_R59W_MECHANISTIC
+        claim_scope: mechanistic_inference
+        evidence_tier: literature_mechanistic
+        claim: >
+          Qin et al. (2011) discuss R59W in the FAD/cofactor environment as a
+          mechanistic hypothesis; not PSGE proof of mechanism.
+        confidence: source_supported
+    evidence_gap: []
+
+  I12T:
+    psge_computed_evidence:
+      - PDB_3NKS
+      - FOLDX_5_3NKS
+      - SASA_BIOPYTHON_3NKS
+    external_evidence: []
+    evidence_gap:
+      - No curated external functional evidence linked for I12T in PSGE.
+      - Targeting/localization remains unresolved by FoldX and lacks linked literature.
+
+  R152C:
+    psge_computed_evidence:
+      - PDB_3NKS
+      - FOLDX_5_3NKS
+      - SASA_BIOPYTHON_3NKS
+    external_evidence: []
+    evidence_gap:
+      - No curated external functional evidence linked for R152C in PSGE.
+      - Weak-to-moderate FoldX signal requires literature/source review before stronger interpretation.
+
+  G358R:
+    psge_computed_evidence:
+      - PDB_3NKS
+      - FOLDX_5_3NKS
+      - SASA_BIOPYTHON_3NKS
+    external_evidence: []
+    evidence_gap:
+      - No curated external functional evidence linked for G358R in PSGE.
+      - Extreme FoldX ΔΔG requires manual review and external literature context.
+
+  "78insC":
+    psge_computed_evidence: []
+    external_evidence: []
+    evidence_gap:
+      - Truncation variant; structural and FoldX backends not applied.
+
+  "IVS2-2 a→c":
+    psge_computed_evidence: []
+    external_evidence: []
+    evidence_gap:
+      - Splice variant; structural and FoldX backends not applied.

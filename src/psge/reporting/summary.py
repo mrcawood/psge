@@ -5,7 +5,13 @@ import json
 from pathlib import Path
 
 from psge.core.models import Config, MechanismHypothesis, VariantRecord
-from psge.reporting.evidence import build_evidence_summary, enrich_evidence_rows
+from psge.reporting.evidence import (
+    build_evidence_summary,
+    enrich_evidence_rows,
+    evidence_basis_intro,
+    external_evidence_rows,
+    format_external_evidence_section,
+)
 
 
 def _format_evidence_line(row: dict) -> str:
@@ -13,6 +19,10 @@ def _format_evidence_line(row: dict) -> str:
     meta = []
     if row.get("evidence_type"):
         meta.append(f"type={row['evidence_type']}")
+    if row.get("source_id"):
+        meta.append(f"source={row['source_id']}")
+    if row.get("claim_scope"):
+        meta.append(f"scope={row['claim_scope']}")
     if row.get("evidence_tier"):
         meta.append(f"tier={row['evidence_tier']}")
     if row.get("interpretation"):
@@ -45,7 +55,8 @@ def emit_summary(
         delta=delta,
         backend_status=backend_status,
     )
-    evidence_summary = build_evidence_summary(enriched, backend_status)
+    enriched.extend(external_evidence_rows(variant))
+    evidence_summary = build_evidence_summary(enriched, backend_status, variant)
 
     summary = {
         "variant": variant,
@@ -103,7 +114,8 @@ def emit_report(
         delta=delta,
         backend_status=status,
     )
-    evidence_summary = build_evidence_summary(enriched, status)
+    enriched.extend(external_evidence_rows(variant))
+    evidence_summary = build_evidence_summary(enriched, status, variant)
 
     context_limits = (
         "This report is a research-grade, non-clinical analysis intended to generate mechanistically "
@@ -127,16 +139,46 @@ def emit_report(
         "",
         "## Evidence basis",
         "",
+        evidence_basis_intro(),
+        "",
         f"- overall_evidence_basis: {evidence_summary.get('overall_evidence_basis')}",
         f"- highest_evidence_tier: {evidence_summary.get('highest_evidence_tier')}",
         f"- species_context: {evidence_summary.get('species_context')}",
         f"- clinical_interpretation: {evidence_summary.get('clinical_interpretation')}",
         "",
+        "## Computed evidence",
+        "",
+    ]
+    for sid in evidence_summary.get("computed_evidence_source_ids", []):
+        lines.append(f"- {sid}")
+    if not evidence_summary.get("computed_evidence_source_ids"):
+        lines.append("- (none for this variant type)")
+    lines.extend([
+        "",
+        "## External evidence",
+        "",
+        format_external_evidence_section(variant),
+        "",
+        "## Evidence gaps",
+        "",
+    ])
+    gaps = evidence_summary.get("evidence_gaps") or []
+    if gaps:
+        for g in gaps:
+            lines.append(f"- {g}")
+    else:
+        lines.append("- None identified in variant evidence map.")
+    lines.extend([
+        "",
+        "## Interpretation limits",
+        "",
+        hypothesis.limits,
+        "",
         "## Mechanism Hypothesis (Suggested)",
         "",
         f"- **Class:** {hypothesis.class_}",
         f"- **Confidence:** {hypothesis.confidence}",
-    ]
+    ])
     secondary = getattr(hypothesis, "secondary_hypotheses", None) or []
     if secondary:
         lines.append(f"- **Secondary hypotheses:** {', '.join(secondary)}")
@@ -190,7 +232,7 @@ def emit_report(
         "",
         "## Limits",
         "",
-        hypothesis.limits,
+        "See Interpretation limits above for mechanism-specific caveats.",
         "",
         "## Backend Status",
         "",

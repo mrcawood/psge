@@ -20,7 +20,7 @@ Implementation
 - M5 complete: MechanismHypothesis, rules-based classifier, summary.json, report.md
 - M6a complete: logic validation, backend_status, decision_trace, VALIDATION_LOGIC.md, T2 assertions
 - M6b complete: real RMSD (BioPython), curated PPOX residues (sites.yaml), ESMFold backend option, backend_status sasa/limits, docs/VALIDATION_SCIENCE.md
-- Tests: 36 pass, 1 skipped (FoldX integration when unavailable)
+- Tests: 50 pass, 1 skipped (FoldX integration when unavailable)
 - Git repo initialized, no commits
 
 ## Approval Status
@@ -65,7 +65,8 @@ Awaiting user approval
 - [x] M6b: Scientific integration (real structure, RMSD, curated PPOX)
 - [x] Phase 1.6a–c: SASA local-only, FoldX integration, panel validation (`docs/PHASE1_6C_SUPERVISOR_REPORT.md`)
 - [x] Phase 1.6d: Evidence tiering, ΔΔG bands, FoldX provenance, doc refresh (`docs/PHASE1_6D_SUPERVISOR_REPORT.md`)
-- [ ] M7: Pete-facing packet (after supervisor review; not Phase 1.6d)
+- [x] Phase 1.6e: Evidence source registry, variant map, external vs computed reporting (`docs/PHASE1_6E_SUPERVISOR_REPORT.md`)
+- [ ] M7: Pete-facing packet (after supervisor review)
 
 ## Open Questions
 

@@ -2,7 +2,7 @@
 
 **Purpose:** Real metrics, curated knowledge, mechanism hypotheses, and limitations.
 
-**Scope:** PPOX (UniProt P50336). Non-clinical, research-grade. Phase 1.6d.
+**Scope:** PPOX (UniProt P50336). Non-clinical, research-grade. Phase 1.6e.
 
 ---
 
@@ -62,14 +62,18 @@ Targeting: N-terminal region 1–28 used in rules; internal targeting signals ex
 
 ---
 
-## Evidence tiers (Phase 1.6d)
+## Evidence tiers (Phase 1.6d/1.6e)
 
-| Tier | Meaning |
-|------|---------|
-| pdb_context_only | 3NKS distances, SASA, curated site membership |
-| foldx_stability_prediction | FoldX BuildModel ΔΔG on prepared protein model |
-| literature_mechanistic | Deferred (Phase 1.6e+) |
-| functional_assay | Deferred |
+Reports distinguish computed tiers from curated external evidence.
+
+| Tier | Source |
+|------|--------|
+| pdb_context_only | 3NKS, SASA, curated sites (`PDB_3NKS`, `SASA_BIOPYTHON_3NKS`) |
+| foldx_stability_prediction | FoldX BuildModel ΔΔG (`FOLDX_5_3NKS`) |
+| literature_mechanistic | Curated bibliography (e.g. Qin 2011 R59W discussion) |
+| functional_assay | Curated functional data (e.g. Meissner 1996 R59W) |
+
+Registry: `data/sources/ppox_sources.yaml`. Per-variant map: `data/sources/ppox_variant_evidence.yaml`. See `docs/PHASE1_6E_EVIDENCE_SOURCE_LAYER.md`.
 
 ---
 

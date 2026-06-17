@@ -1,15 +1,21 @@
-"""Evidence tiering and enriched evidence rows (Phase 1.6d)."""
+"""Evidence tiering and enriched evidence rows (Phase 1.6d/1.6e)."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from psge.core.models import ContextFeatures, DeltaFeatures, StabilityResult
+from psge.core.models import DeltaFeatures, StabilityResult
+from psge.sources.loader import (
+    get_variant_evidence,
+    highest_tier_for_variant,
+    load_source_registry,
+)
 from psge.utils.stability_bands import BAND_ORDER
 
-PDB_ID = "3NKS"
-FOLDX_SOURCE_ID = "FoldX_5_on_3NKS"
-STRUCTURE_SOURCE_ID = "3NKS_Qin2011"
+SOURCE_PDB = "PDB_3NKS"
+SOURCE_FOLDX = "FOLDX_5_3NKS"
+SOURCE_SASA = "SASA_BIOPYTHON_3NKS"
+SOURCE_SITES = "sites_yaml_provisional"
 
 
 def _row(
@@ -20,6 +26,7 @@ def _row(
     evidence_tier: str,
     species_context: str = "human",
     source_id: str | None = None,
+    claim_scope: str | None = None,
     interpretation: str | None = None,
 ) -> dict:
     row: dict[str, Any] = {
@@ -31,6 +38,8 @@ def _row(
     }
     if source_id:
         row["source_id"] = source_id
+    if claim_scope:
+        row["claim_scope"] = claim_scope
     if interpretation:
         row["interpretation"] = interpretation
     return row
@@ -50,8 +59,8 @@ def enrich_evidence_rows(
     for row in raw_rows:
         signal = row.get("signal", "")
         value = row.get("value")
-        if signal == "ddg" or signal == "stability_signal_band" or signal == "flags":
-            continue  # handled via stability block
+        if signal in ("ddg", "stability_signal_band", "flags"):
+            continue
         if signal.startswith("sasa_") or signal == "sasa_source_pairing":
             out.append(
                 _row(
@@ -59,7 +68,8 @@ def enrich_evidence_rows(
                     value,
                     evidence_type="sasa_context",
                     evidence_tier="pdb_context_only",
-                    source_id=PDB_ID,
+                    source_id=SOURCE_SASA,
+                    claim_scope="structural_context",
                 )
             )
         elif signal in (
@@ -67,14 +77,16 @@ def enrich_evidence_rows(
             "min_dist_to_inhibitor_atoms_angstrom",
             "min_dist_to_active_site_residue_atoms_angstrom_excl_self",
         ):
+            interp = "FAD-environment proximity" if "fad" in signal else "inhibitor-pocket proxy proximity"
             out.append(
                 _row(
                     signal,
                     value,
                     evidence_type="structural_proximity",
                     evidence_tier="pdb_context_only",
-                    source_id=PDB_ID,
-                    interpretation="3D distance from experimental structure; not functional proof",
+                    source_id=SOURCE_PDB,
+                    claim_scope="structural_context",
+                    interpretation=interp,
                 )
             )
         elif signal in ("is_in_fad_residue_set", "is_in_active_site_residue_set"):
@@ -84,7 +96,8 @@ def enrich_evidence_rows(
                     value,
                     evidence_type="curated_site_membership",
                     evidence_tier="pdb_context_only",
-                    source_id="sites_yaml_provisional",
+                    source_id=SOURCE_SITES,
+                    claim_scope="structural_context",
                     interpretation="Curated residue set; Pete has not formally endorsed exact lists",
                 )
             )
@@ -95,7 +108,8 @@ def enrich_evidence_rows(
                     value,
                     evidence_type="curated_site_membership",
                     evidence_tier="pdb_context_only",
-                    source_id="sites_yaml_provisional",
+                    source_id=SOURCE_SITES,
+                    claim_scope="structural_context",
                 )
             )
         elif signal == "variant_type":
@@ -106,6 +120,7 @@ def enrich_evidence_rows(
                     evidence_type="variant_class_rule",
                     evidence_tier="pdb_context_only",
                     species_context="not_applicable",
+                    claim_scope="structural_context",
                 )
             )
         else:
@@ -115,7 +130,8 @@ def enrich_evidence_rows(
                     value,
                     evidence_type="structural_proximity",
                     evidence_tier="pdb_context_only",
-                    source_id=PDB_ID,
+                    source_id=SOURCE_PDB,
+                    claim_scope="structural_context",
                 )
             )
 
@@ -127,7 +143,8 @@ def enrich_evidence_rows(
                 round(stability_result.ddg, 5),
                 evidence_type="foldx_ddg",
                 evidence_tier="foldx_stability_prediction",
-                source_id=FOLDX_SOURCE_ID,
+                source_id=SOURCE_FOLDX,
+                claim_scope="computational_prediction",
                 interpretation=band,
             )
         )
@@ -138,7 +155,8 @@ def enrich_evidence_rows(
                     band,
                     evidence_type="foldx_ddg",
                     evidence_tier="foldx_stability_prediction",
-                    source_id=FOLDX_SOURCE_ID,
+                    source_id=SOURCE_FOLDX,
+                    claim_scope="computational_prediction",
                 )
             )
 
@@ -148,39 +166,52 @@ def enrich_evidence_rows(
 def build_evidence_summary(
     enriched_rows: list[dict],
     backend_status: dict | None,
+    variant: str,
 ) -> dict:
-    """Report-level evidence basis block."""
-    tiers: set[str] = {"pdb_context_only"}
-    if (backend_status or {}).get("stability_backend") == "foldx":
-        tiers.add("foldx_stability_prediction")
+    """Report-level evidence basis block including variant map."""
+    registry = load_source_registry()
+    ve = get_variant_evidence(variant)
 
-    tier_rank = {t: i for i, t in enumerate(
-        [
-            "pdb_context_only",
-            "foldx_stability_prediction",
-            "literature_mechanistic",
-            "functional_assay",
-            "replicated_multi_source",
-        ]
-    )}
-    highest = max(tiers, key=lambda t: tier_rank.get(t, 0))
+    tier_rank = {
+        "pdb_context_only": 0,
+        "foldx_stability_prediction": 1,
+        "literature_mechanistic": 2,
+        "functional_assay": 3,
+        "replicated_multi_source": 4,
+    }
+    tiers: set[str] = set()
+    sources: list[dict] = []
 
-    sources = [
-        {
-            "source_id": PDB_ID,
-            "source_type": "pdb_structure",
-            "species_context": "human",
-        }
-    ]
-    if "foldx_stability_prediction" in tiers:
-        sources.append(
-            {
-                "source_id": FOLDX_SOURCE_ID,
-                "source_type": "foldx_buildmodel",
-                "species_context": "human",
-                "note": "Protein-only 3NKS RepairPDB input; FAD/ACJ not included in FoldX run",
-            }
-        )
+    for sid in ve.get("psge_computed_evidence", []):
+        src = registry[sid]
+        tiers.add(src["evidence_tier"])
+        sources.append({
+            "source_id": sid,
+            "source_type": src["source_type"],
+            "species_context": src.get("species_context", "human"),
+        })
+
+    external_rows = []
+    for ext in ve.get("external_evidence", []):
+        sid = ext["source_id"]
+        src = registry[sid]
+        et = ext.get("evidence_tier") or src["evidence_tier"]
+        tiers.add(et)
+        external_rows.append({
+            "source_id": sid,
+            "evidence_tier": et,
+            "claim_scope": ext.get("claim_scope"),
+            "claim": ext.get("claim"),
+            "confidence": ext.get("confidence"),
+        })
+        sources.append({
+            "source_id": sid,
+            "source_type": src["source_type"],
+            "species_context": src.get("species_context", "human"),
+            "title": src.get("title"),
+        })
+
+    highest = highest_tier_for_variant(variant, backend_status)
 
     return {
         "overall_evidence_basis": sorted(tiers, key=lambda t: tier_rank.get(t, 0)),
@@ -188,6 +219,83 @@ def build_evidence_summary(
         "species_context": "human",
         "clinical_interpretation": False,
         "sources": sources,
+        "computed_evidence_source_ids": list(ve.get("psge_computed_evidence", [])),
+        "external_evidence": external_rows,
+        "evidence_gaps": list(ve.get("evidence_gap", [])),
         "threshold_policy": "provisional_bands_v1_6d",
         "stability_bands": BAND_ORDER,
     }
+
+
+def evidence_basis_intro() -> str:
+    return (
+        "This report combines PSGE-computed structural context from 3NKS, local SASA context, "
+        "and FoldX ΔΔG stability prediction when available. External literature evidence is "
+        "listed separately when curated sources are available. FoldX values are computational "
+        "predictions and do not establish enzyme activity, cofactor affinity, penetrance, or "
+        "clinical outcome."
+    )
+
+
+def external_evidence_rows(variant: str) -> list[dict]:
+    """Per-row external evidence from variant map (Phase 1.6e)."""
+    registry = load_source_registry()
+    rows: list[dict] = []
+    for ext in get_variant_evidence(variant).get("external_evidence", []):
+        sid = ext["source_id"]
+        src = registry[sid]
+        et = ext.get("evidence_tier") or src["evidence_tier"]
+        src_type = src.get("source_type", "literature")
+        evidence_type = (
+            "functional_assay"
+            if et == "functional_assay" or src_type == "functional_assay"
+            else "literature_claim"
+        )
+        rows.append(
+            _row(
+                f"external_{sid}",
+                ext.get("claim") or src.get("claim_text", ""),
+                evidence_type=evidence_type,
+                evidence_tier=et,
+                source_id=sid,
+                species_context=src.get("species_context", "human"),
+                claim_scope=ext.get("claim_scope"),
+                interpretation="external functional evidence exists"
+                if et == "functional_assay"
+                else "external literature context",
+            )
+        )
+    return rows
+
+
+def format_external_evidence_section(variant: str) -> str:
+    ve = get_variant_evidence(variant)
+    external = ve.get("external_evidence", [])
+    if not external:
+        return (
+            "No curated external functional evidence is currently linked for this variant in PSGE. "
+            "Interpretation is therefore limited to computed structural context and FoldX prediction."
+        )
+    if variant == "R59W":
+        lines = [
+            "R59W has curated literature evidence reporting reduced PPOX enzyme activity "
+            "(Meissner et al. 1996). Qin et al. (2011) discuss R59W in relation to the "
+            "FAD/cofactor environment as mechanistic context.",
+            "",
+            "PSGE treats external sources as supporting biological relevance and mechanistic "
+            "context. PSGE mechanism assignment remains a hypothesis based on structural context "
+            "and FoldX prediction unless explicitly stated otherwise.",
+            "",
+        ]
+        for ext in external:
+            lines.append(f"- [{ext['source_id']}] {ext.get('claim', '').strip()}")
+        return "\n".join(lines)
+    lines = []
+    for ext in external:
+        lines.append(f"- [{ext['source_id']}] {ext.get('claim', '').strip()}")
+    lines.append(
+        "PSGE treats external sources as supporting context. PSGE mechanism assignment remains "
+        "a hypothesis based on computed structural context and FoldX prediction unless "
+        "explicitly stated otherwise."
+    )
+    return "\n".join(lines)

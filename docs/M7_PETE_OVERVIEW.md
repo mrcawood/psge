@@ -1,4 +1,4 @@
-# PSGE Phase 1 — Overview for Domain Review (updated Phase 1.6d)
+# PSGE Phase 1 — Overview for Domain Review (updated Phase 1.6e)
 
 ## What PSGE Is
 
@@ -33,9 +33,11 @@ See `docs/PHASE1_5_REMAP.md`. Key names: `cofactor_binding_perturbation`, `foldi
 
 Cofactor proximity does not prove binding affinity. FoldX ΔΔG is a protein stability estimate, not a clinical or catalytic measurement.
 
-## Evidence tiers (Phase 1.6d)
+## Evidence tiers (Phase 1.6e)
 
-Reports distinguish `pdb_context_only` (3NKS distances, SASA, curated site membership) from `foldx_stability_prediction`. Literature and functional assay tiers are deferred.
+Reports distinguish `pdb_context_only` and `foldx_stability_prediction` (PSGE-computed) from curated external tiers (`literature_mechanistic`, `functional_assay`). R59W links Meissner (1996) reduced-activity data and Qin (2011) mechanistic context from project bibliography only. Other panel variants list explicit evidence gaps when no external source is curated.
+
+Computed vs external evidence is separated in every report (`Evidence basis`, `Computed evidence`, `External evidence`, `Evidence gaps`).
 
 ## Limits
 
@@ -47,5 +49,6 @@ Reports distinguish `pdb_context_only` (3NKS distances, SASA, curated site membe
 
 - `docs/VALIDATION_SCIENCE.md` — metrics, bands, classifier policy
 - `docs/OUTPUT_SCHEMA.md` — `summary.json` / `report.md` fields
-- `docs/PHASE1_6D_SUPERVISOR_REPORT.md` — latest validation summary
+- `docs/PHASE1_6E_SUPERVISOR_REPORT.md` — latest validation summary
+- `docs/PHASE1_6E_EVIDENCE_SOURCE_LAYER.md` — source registry and variant map
 - `src/psge/knowledge/ppox/sites.yaml` — curated sites
