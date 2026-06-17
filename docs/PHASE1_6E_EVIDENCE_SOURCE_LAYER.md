@@ -19,16 +19,17 @@ Each source entry includes:
 | `evidence_tier` | Tier used in report-level basis |
 | `supports` | What kind of claim the source can support |
 | `notes` | Caveats (non-clinical, proxy vs proof, etc.) |
+| `verification_status` | For literature: `bibliography_verified`, `primary_text_verified`, or `pending_primary_verification` |
 
 Current registry sources:
 
 - `PDB_3NKS` — human 3NKS crystal structure (FAD + inhibitor ACJ)
 - `FOLDX_5_3NKS` — FoldX 5 ΔΔG on repaired protein-only 3NKS
 - `SASA_BIOPYTHON_3NKS` — local SASA on 3NKS context
-- `MEISSNER_1996_R59W` — functional assay (reduced PPO activity), verified from `07_REFERENCES.md`
-- `QIN_2011_R59W_MECHANISTIC` — mechanistic literature context for R59W / FAD environment
+- `MEISSNER_1996_R59W` — functional assay (reduced PPO activity); `verification_status: bibliography_verified`
+- `QIN_2011_R59W_MECHANISTIC` — mechanistic literature context; `verification_status: bibliography_verified`
 
-No source is invented. Literature claims are only present when verified from project bibliography materials.
+Literature claims are curated from project bibliography/reference notes unless `verification_status` is `primary_text_verified`. Do not imply primary-paper validation when only bibliography notes were checked.
 
 ---
 
@@ -42,9 +43,14 @@ Per variant:
 |-------|---------|
 | `psge_computed_evidence` | Source IDs for PSGE-computed signals |
 | `external_evidence` | Curated external claims with `claim_scope`, `evidence_tier`, `claim`, `confidence` |
-| `evidence_gap` | Explicit gaps (missing functional data, unresolved targeting, etc.) |
+| `evidence_gap` | Explicit gaps (interpretation limits, missing functional data, etc.) |
+| `highest_evidence_tier` | Optional override (e.g. `variant_class_rule` for non-missense) |
+| `evidence_basis` | Short description of what evidence the report rests on |
+| `structural_evidence_status` | `not_applicable` when PDB/FoldX/SASA backends were skipped |
 
-Truncation/splice variants list empty computed evidence and note that structural/FoldX backends are not applied.
+Truncation/splice variants use `highest_evidence_tier: variant_class_rule`, empty computed evidence, and `structural_evidence_status: not_applicable`. They do not default to `pdb_context_only`.
+
+R59W includes external evidence and explicit interpretation gaps (mechanism remains hypothesis; FoldX/clinical limits; provisional site lists).
 
 ---
 
@@ -52,6 +58,8 @@ Truncation/splice variants list empty computed evidence and note that structural
 
 | Tier | Meaning |
 |------|---------|
+| `not_applicable` | Evidence type does not apply (e.g. skipped structural backends) |
+| `variant_class_rule` | Mechanism from preflight variant-class routing only |
 | `pdb_context_only` | 3NKS distances, SASA, curated site membership |
 | `foldx_stability_prediction` | FoldX ΔΔG on prepared model |
 | `literature_mechanistic` | Published mechanistic discussion (not PSGE proof) |

@@ -139,8 +139,9 @@ def emit_report(
         "",
         "## Evidence basis",
         "",
-        evidence_basis_intro(),
+        evidence_basis_intro(variant),
         "",
+        f"- evidence_basis: {evidence_summary.get('evidence_basis_description') or 'PSGE-computed structural context and FoldX when applicable'}",
         f"- overall_evidence_basis: {evidence_summary.get('overall_evidence_basis')}",
         f"- highest_evidence_tier: {evidence_summary.get('highest_evidence_tier')}",
         f"- species_context: {evidence_summary.get('species_context')}",
@@ -152,7 +153,12 @@ def emit_report(
     for sid in evidence_summary.get("computed_evidence_source_ids", []):
         lines.append(f"- {sid}")
     if not evidence_summary.get("computed_evidence_source_ids"):
-        lines.append("- (none for this variant type)")
+        if evidence_summary.get("structural_evidence_status") == "not_applicable":
+            lines.append(
+                "- Structural, FoldX, and SASA evidence not applicable (non-missense variant class)."
+            )
+        else:
+            lines.append("- (none for this variant type)")
     lines.extend([
         "",
         "## External evidence",

@@ -82,3 +82,21 @@ def test_i12t_reports_evidence_gap(tmp_path):
 
     summary = json.loads((Path(config.results_dir) / "summary.json").read_text())
     assert summary["evidence_summary"].get("evidence_gaps")
+
+
+def test_truncation_evidence_tier(tmp_path):
+    config = Config(results_dir=str(tmp_path / "results_trunc"), cache_dir=str(tmp_path / "cache"))
+    rec = preflight("78insC", config)
+    hypothesis = mechanism_classifier(rec, None, None, None, config)
+    reporting(rec, hypothesis, config, skipped_steps=["Structure skipped"])
+
+    summary = json.loads((Path(config.results_dir) / "summary.json").read_text())
+    es = summary["evidence_summary"]
+    assert es["highest_evidence_tier"] == "variant_class_rule"
+    assert es["highest_evidence_tier"] != "pdb_context_only"
+    assert es.get("structural_evidence_status") == "not_applicable"
+    assert "variant_class_rule" in es.get("overall_evidence_basis", [])
+
+    report = (Path(config.results_dir) / "report.md").read_text()
+    assert "not applicable" in report.lower()
+    assert "variant class / truncation rule" in report

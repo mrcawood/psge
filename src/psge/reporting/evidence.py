@@ -118,7 +118,7 @@ def enrich_evidence_rows(
                     signal,
                     value,
                     evidence_type="variant_class_rule",
-                    evidence_tier="pdb_context_only",
+                    evidence_tier="variant_class_rule",
                     species_context="not_applicable",
                     claim_scope="structural_context",
                 )
@@ -173,11 +173,13 @@ def build_evidence_summary(
     ve = get_variant_evidence(variant)
 
     tier_rank = {
-        "pdb_context_only": 0,
-        "foldx_stability_prediction": 1,
-        "literature_mechanistic": 2,
-        "functional_assay": 3,
-        "replicated_multi_source": 4,
+        "not_applicable": -1,
+        "variant_class_rule": 0,
+        "pdb_context_only": 1,
+        "foldx_stability_prediction": 2,
+        "literature_mechanistic": 3,
+        "functional_assay": 4,
+        "replicated_multi_source": 5,
     }
     tiers: set[str] = set()
     sources: list[dict] = []
@@ -203,19 +205,25 @@ def build_evidence_summary(
             "claim_scope": ext.get("claim_scope"),
             "claim": ext.get("claim"),
             "confidence": ext.get("confidence"),
+            "verification_status": src.get("verification_status"),
         })
         sources.append({
             "source_id": sid,
             "source_type": src["source_type"],
             "species_context": src.get("species_context", "human"),
             "title": src.get("title"),
+            "verification_status": src.get("verification_status"),
         })
 
     highest = highest_tier_for_variant(variant, backend_status)
+    if highest not in tiers:
+        tiers.add(highest)
 
     return {
         "overall_evidence_basis": sorted(tiers, key=lambda t: tier_rank.get(t, 0)),
         "highest_evidence_tier": highest,
+        "evidence_basis_description": ve.get("evidence_basis"),
+        "structural_evidence_status": ve.get("structural_evidence_status"),
         "species_context": "human",
         "clinical_interpretation": False,
         "sources": sources,
@@ -227,7 +235,15 @@ def build_evidence_summary(
     }
 
 
-def evidence_basis_intro() -> str:
+def evidence_basis_intro(variant: str | None = None) -> str:
+    if variant:
+        ve = get_variant_evidence(variant)
+        if ve.get("evidence_basis"):
+            return (
+                f"Evidence basis for this variant: {ve['evidence_basis']}. "
+                "Structural, FoldX, and SASA backends were not applied. "
+                "Mechanism assignment follows variant-class routing rules only."
+            )
     return (
         "This report combines PSGE-computed structural context from 3NKS, local SASA context, "
         "and FoldX ΔΔG stability prediction when available. External literature evidence is "
@@ -235,6 +251,16 @@ def evidence_basis_intro() -> str:
         "predictions and do not establish enzyme activity, cofactor affinity, penetrance, or "
         "clinical outcome."
     )
+
+
+VERIFICATION_LABELS = {
+    "bibliography_verified": (
+        "curated from project bibliography/reference notes; "
+        "primary-paper verification recommended before external circulation"
+    ),
+    "primary_text_verified": "verified against primary paper text",
+    "pending_primary_verification": "pending primary-paper verification",
+}
 
 
 def external_evidence_rows(variant: str) -> list[dict]:
@@ -269,6 +295,7 @@ def external_evidence_rows(variant: str) -> list[dict]:
 
 
 def format_external_evidence_section(variant: str) -> str:
+    registry = load_source_registry()
     ve = get_variant_evidence(variant)
     external = ve.get("external_evidence", [])
     if not external:
@@ -282,13 +309,23 @@ def format_external_evidence_section(variant: str) -> str:
             "(Meissner et al. 1996). Qin et al. (2011) discuss R59W in relation to the "
             "FAD/cofactor environment as mechanistic context.",
             "",
+            "Literature verification: external sources are "
+            + VERIFICATION_LABELS["bibliography_verified"]
+            + ".",
+            "",
             "PSGE treats external sources as supporting biological relevance and mechanistic "
             "context. PSGE mechanism assignment remains a hypothesis based on structural context "
             "and FoldX prediction unless explicitly stated otherwise.",
             "",
         ]
         for ext in external:
-            lines.append(f"- [{ext['source_id']}] {ext.get('claim', '').strip()}")
+            src = registry[ext["source_id"]]
+            vs = src.get("verification_status")
+            label = VERIFICATION_LABELS.get(vs, vs or "unknown")
+            lines.append(
+                f"- [{ext['source_id']}] {ext.get('claim', '').strip()} "
+                f"(verification: {label})"
+            )
         return "\n".join(lines)
     lines = []
     for ext in external:

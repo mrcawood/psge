@@ -2,7 +2,7 @@
 
 ## Summary
 
-Phase 1.6e adds a minimal PPOX evidence-source layer: a curated source registry, per-variant evidence map, report sections separating computed vs external evidence, per-row `source_id` / `claim_scope`, and validation tests. Panel behavior on `pdb_first` + FoldX is unchanged from 1.6d. R59W retains cofactor-primary classification with borderline FoldX secondary; external Meissner (1996) functional evidence and Qin (2011) mechanistic context are linked only from verified bibliography text.
+Phase 1.6e adds a minimal PPOX evidence-source layer separating PSGE-computed from curated external evidence. Phase 1.6e-fix corrects non-missense tier handling (`variant_class_rule` instead of `pdb_context_only`), adds R59W interpretation gaps, and makes literature `verification_status` explicit (`bibliography_verified` for Meissner 1996 and Qin 2011).
 
 Pre-task `RG358R` typo was fixed in commit `8a40db6` before 1.6e work; `git grep RG358R` is clean.
 
@@ -36,12 +36,12 @@ Pre-task `RG358R` typo was fixed in commit `8a40db6` before 1.6e work; `git grep
 
 | variant | computed | external | highest tier | evidence gaps |
 |---------|----------|----------|--------------|---------------|
-| R59W | PDB_3NKS, FOLDX_5_3NKS, SASA_BIOPYTHON_3NKS | MEISSNER_1996_R59W, QIN_2011_R59W_MECHANISTIC | functional_assay | none in map |
+| R59W | PDB_3NKS, FOLDX_5_3NKS, SASA_BIOPYTHON_3NKS | MEISSNER_1996_R59W, QIN_2011_R59W_MECHANISTIC | functional_assay | interpretation gaps despite external evidence (see variant map) |
 | I12T | PDB_3NKS, FOLDX_5_3NKS, SASA_BIOPYTHON_3NKS | none | foldx_stability_prediction | no external functional; targeting unresolved |
 | R152C | PDB_3NKS, FOLDX_5_3NKS, SASA_BIOPYTHON_3NKS | none | foldx_stability_prediction | weak/moderate FoldX needs literature review |
 | G358R | PDB_3NKS, FOLDX_5_3NKS, SASA_BIOPYTHON_3NKS | none | foldx_stability_prediction | extreme ΔΔG needs external context |
-| 78insC | none | none | pdb_context_only (default) | truncation; FoldX skipped |
-| IVS2-2 a→c | none | none | pdb_context_only (default) | splice; FoldX skipped |
+| 78insC | none | none | variant_class_rule | structural/FoldX/SASA not applicable |
+| IVS2-2 a→c | none | none | variant_class_rule | structural/FoldX/SASA not applicable |
 
 ---
 

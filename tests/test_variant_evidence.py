@@ -42,3 +42,25 @@ def test_highest_tier_r59w():
 def test_highest_tier_i12t():
     tier = highest_tier_for_variant("I12T", None)
     assert tier == "foldx_stability_prediction"
+
+
+def test_highest_tier_78insc():
+    tier = highest_tier_for_variant("78insC", None)
+    assert tier == "variant_class_rule"
+    ve = get_variant_evidence("78insC")
+    assert ve.get("structural_evidence_status") == "not_applicable"
+    assert "truncation" in ve.get("evidence_basis", "").lower()
+
+
+def test_highest_tier_ivs2():
+    tier = highest_tier_for_variant("IVS2-2 a→c", None)
+    assert tier == "variant_class_rule"
+    assert tier != "pdb_context_only"
+
+
+def test_r59w_has_evidence_gaps():
+    ve = get_variant_evidence("R59W")
+    gaps = ve.get("evidence_gap", [])
+    assert len(gaps) >= 3
+    assert any("hypothesis" in g.lower() for g in gaps)
+    assert any("foldx" in g.lower() for g in gaps)

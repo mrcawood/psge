@@ -19,7 +19,12 @@ variants:
           Qin et al. (2011) discuss R59W in the FAD/cofactor environment as a
           mechanistic hypothesis; not PSGE proof of mechanism.
         confidence: source_supported
-    evidence_gap: []
+    evidence_gap:
+      - PSGE mechanism assignment remains a computational/structural hypothesis.
+      - FoldX does not measure PPOX enzyme activity, FAD binding, inhibitor binding, catalysis, or clinical outcome.
+      - 3NKS/FAD/ACJ proximity supports structural context only, not direct functional causation.
+      - Clinical expression, penetrance, and symptom risk are out of scope.
+      - FAD/active-site residue definitions remain provisional pending expert review.
 
   I12T:
     psge_computed_evidence:
@@ -52,13 +57,21 @@ variants:
       - Extreme FoldX ΔΔG requires manual review and external literature context.
 
   "78insC":
+    highest_evidence_tier: variant_class_rule
+    evidence_basis: variant class / truncation rule
+    structural_evidence_status: not_applicable
     psge_computed_evidence: []
     external_evidence: []
     evidence_gap:
-      - Truncation variant; structural and FoldX backends not applied.
+      - Structural, FoldX, and SASA evidence not applicable to this variant class.
+      - Truncation variant; structural and FoldX backends skipped by design.
 
   "IVS2-2 a→c":
+    highest_evidence_tier: variant_class_rule
+    evidence_basis: variant class / splice rule
+    structural_evidence_status: not_applicable
     psge_computed_evidence: []
     external_evidence: []
     evidence_gap:
-      - Splice variant; structural and FoldX backends not applied.
+      - Structural, FoldX, and SASA evidence not applicable to this variant class.
+      - Splice variant; structural and FoldX backends skipped by design.

@@ -37,7 +37,7 @@ Each row includes:
 | `signal` | Evidence name |
 | `value` | Numeric, boolean, or string |
 | `evidence_type` | e.g. `structural_proximity`, `foldx_ddg`, `sasa_context`, `functional_assay`, `literature_claim` |
-| `evidence_tier` | e.g. `pdb_context_only`, `foldx_stability_prediction`, `functional_assay` |
+| `evidence_tier` | e.g. `pdb_context_only`, `variant_class_rule`, `foldx_stability_prediction` |
 | `species_context` | Usually `human` |
 | `source_id` | e.g. `PDB_3NKS`, `FOLDX_5_3NKS`, `MEISSNER_1996_R59W` |
 | `claim_scope` | e.g. `structural_context`, `computational_prediction`, `direct_variant_evidence` |
@@ -49,6 +49,8 @@ Each row includes:
 |-------|-------------|
 | `overall_evidence_basis` | List of tiers present |
 | `highest_evidence_tier` | Highest tier in this report |
+| `evidence_basis_description` | From variant map `evidence_basis` when set |
+| `structural_evidence_status` | e.g. `not_applicable` for non-missense variants |
 | `species_context` | `human` for current PPOX panel |
 | `clinical_interpretation` | Always `false` |
 | `sources` | Structured source entries (computed + external) |

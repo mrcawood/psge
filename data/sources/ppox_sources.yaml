@@ -1,5 +1,5 @@
 # PPOX evidence source registry (Phase 1.6e)
-# Claims verified against 07_REFERENCES.md and project bibliography only.
+# Literature claims curated from project bibliography/reference notes unless noted.
 
 sources:
   - source_id: PDB_3NKS
@@ -58,8 +58,10 @@ sources:
       - reduced_enzyme_activity
     claim_text: "R59W leads to reduced PPO enzyme activity in functional assays."
     claim_scope: direct_variant_evidence
+    verification_status: bibliography_verified
     notes: >
-      External functional evidence from curated bibliography (07_REFERENCES.md).
+      Curated from project bibliography/reference notes (07_REFERENCES.md);
+      primary-paper verification recommended before external circulation.
       Supports biological relevance of R59W; does not determine PSGE mechanism class.
 
   - source_id: QIN_2011_R59W_MECHANISTIC
@@ -80,6 +82,9 @@ sources:
       Qin et al. discuss R59W in relation to the FAD binding pocket and propose
       electrostatic hindrance from the bulky tryptophan side chain.
     claim_scope: mechanistic_inference
+    verification_status: bibliography_verified
     notes: >
+      Curated from project bibliography/reference notes (07_REFERENCES.md);
+      primary-paper verification recommended before external circulation.
       Mechanistic interpretation from literature; separate from PSGE-computed proximity
       and FoldX predictions. Not a substitute for direct functional assay.

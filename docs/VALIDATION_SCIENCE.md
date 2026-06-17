@@ -68,12 +68,14 @@ Reports distinguish computed tiers from curated external evidence.
 
 | Tier | Source |
 |------|--------|
+| not_applicable | Skipped or inapplicable evidence |
+| variant_class_rule | Preflight truncation/splice routing (78insC, IVS2-2) |
 | pdb_context_only | 3NKS, SASA, curated sites (`PDB_3NKS`, `SASA_BIOPYTHON_3NKS`) |
 | foldx_stability_prediction | FoldX BuildModel ΔΔG (`FOLDX_5_3NKS`) |
 | literature_mechanistic | Curated bibliography (e.g. Qin 2011 R59W discussion) |
 | functional_assay | Curated functional data (e.g. Meissner 1996 R59W) |
 
-Registry: `data/sources/ppox_sources.yaml`. Per-variant map: `data/sources/ppox_variant_evidence.yaml`. See `docs/PHASE1_6E_EVIDENCE_SOURCE_LAYER.md`.
+Registry: `data/sources/ppox_sources.yaml`. Per-variant map: `data/sources/ppox_variant_evidence.yaml`. Literature sources use `verification_status` (`bibliography_verified` unless primary paper text was checked). See `docs/PHASE1_6E_EVIDENCE_SOURCE_LAYER.md`.
 
 ---
 

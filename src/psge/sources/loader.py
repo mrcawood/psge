@@ -18,11 +18,19 @@ ALLOWED_SOURCE_TYPES = {
 }
 
 ALLOWED_EVIDENCE_TIERS = {
+    "not_applicable",
+    "variant_class_rule",
     "pdb_context_only",
     "foldx_stability_prediction",
     "literature_mechanistic",
     "functional_assay",
     "replicated_multi_source",
+}
+
+ALLOWED_VERIFICATION_STATUSES = {
+    "bibliography_verified",
+    "primary_text_verified",
+    "pending_primary_verification",
 }
 
 ALLOWED_CLAIM_SCOPES = {
@@ -81,6 +89,9 @@ def validate_registry(registry: dict[str, dict]) -> None:
         cs = src.get("claim_scope")
         if cs is not None and cs not in ALLOWED_CLAIM_SCOPES:
             raise ValueError(f"Invalid claim_scope for {sid}: {cs}")
+        vs = src.get("verification_status")
+        if vs is not None and vs not in ALLOWED_VERIFICATION_STATUSES:
+            raise ValueError(f"Invalid verification_status for {sid}: {vs}")
 
 
 def validate_variant_map(variants: dict[str, dict], registry: dict[str, dict]) -> None:
@@ -98,6 +109,9 @@ def validate_variant_map(variants: dict[str, dict], registry: dict[str, dict]) -
             et = ext.get("evidence_tier")
             if et and et not in ALLOWED_EVIDENCE_TIERS:
                 raise ValueError(f"{variant}: invalid evidence_tier {et}")
+        het = entry.get("highest_evidence_tier")
+        if het and het not in ALLOWED_EVIDENCE_TIERS:
+            raise ValueError(f"{variant}: invalid highest_evidence_tier {het}")
 
 
 def get_source(source_id: str) -> dict | None:
@@ -113,8 +127,14 @@ def get_variant_evidence(variant: str) -> dict[str, Any]:
 
 
 def highest_tier_for_variant(variant: str, backend_status: dict | None) -> str:
-    """Highest evidence tier from computed + external sources."""
+    """Highest evidence tier from variant map override, computed, and external sources."""
+    ve = get_variant_evidence(variant)
+    if ve.get("highest_evidence_tier"):
+        return ve["highest_evidence_tier"]
+
     rank = [
+        "not_applicable",
+        "variant_class_rule",
         "pdb_context_only",
         "foldx_stability_prediction",
         "literature_mechanistic",
@@ -122,12 +142,11 @@ def highest_tier_for_variant(variant: str, backend_status: dict | None) -> str:
         "replicated_multi_source",
     ]
     tiers: set[str] = set()
-    ve = get_variant_evidence(variant)
     registry = load_source_registry()
     for sid in ve.get("psge_computed_evidence", []):
         tiers.add(registry[sid]["evidence_tier"])
     for ext in ve.get("external_evidence", []):
         tiers.add(ext.get("evidence_tier") or registry[ext["source_id"]]["evidence_tier"])
     if not tiers:
-        tiers.add("pdb_context_only")
+        return "not_applicable"
     return max(tiers, key=lambda t: rank.index(t))
