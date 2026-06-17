@@ -8,6 +8,10 @@ from psge.core.models import (
     StabilityResult,
     VariantRecord,
 )
+from psge.utils.stability_bands import (
+    qualifies_folding_primary,
+    qualifies_folding_secondary,
+)
 from psge.utils.variant_parse import variant_position
 
 # 3D proximity thresholds (Å) — Phase 1.5
@@ -46,16 +50,24 @@ def classify(
 
     _stab = (backend_status or {}).get("stability_backend", "mock")
     stability_mock = _stab in ("mock", "not_available", "foldx_failed")
-    _destabilizing = (
+    band = stability_result.stability_signal_band if stability_result else None
+    audit_ok = bool(stability_result and stability_result.audit_passed)
+    _folding_primary = (
+        not stability_mock
+        and stability_result
+        and qualifies_folding_primary(band, audit_ok)
+    )
+    _folding_secondary = (
         stability_result
-        and (stability_result.ddg >= 2.0 or "destabilizing" in stability_result.flags)
+        and not stability_mock
+        and qualifies_folding_secondary(band)
     )
 
     # 2. cofactor_contact -> cofactor_binding_perturbation (FAD/ACJ distance or membership fallback)
     # In targeting region (e.g. I12T): cofactor is secondary only; primary is folding/unknown
     if context and _cofactor_contact(context) and not context.in_targeting_region:
         sec = secondary.copy()
-        if _destabilizing:
+        if _folding_secondary:
             sec.append("folding_stability_hydrophobic_core")
         pos = variant_position(variant_record.parsed)
         evidence = _cofactor_evidence(context)
@@ -84,7 +96,7 @@ def classify(
         # Fall through; primary cannot be active_site here
     elif context and _active_site_contact(context) and not context.in_targeting_region:
         sec = secondary.copy()
-        if _destabilizing:
+        if _folding_secondary:
             sec.append("folding_stability_hydrophobic_core")
         evidence = _active_site_evidence(context)
         interp = _active_site_interpretation(context)
@@ -102,29 +114,31 @@ def classify(
     # Phase 1.6: Only fire as PRIMARY when stability backend is real (foldx/rosetta).
     # Mock ddG must not drive primary classification; stability-derived hypotheses
     # remain secondary/unknown when stability is unavailable.
-    if _destabilizing and not stability_mock:
-        evidence = [
-            {"signal": "ddg", "value": stability_result.ddg},
-            {"signal": "flags", "value": stability_result.flags},
-        ]
+    if _folding_primary:
+        evidence = _stability_evidence(stability_result)
         sec = secondary.copy()
         return MechanismHypothesis(
             class_="folding_stability_hydrophobic_core",
             confidence="plausible",
             evidence_table=evidence,
             interpretation="Stability analysis suggests folding/core destabilization.",
-            limits="3D structure and FoldX ΔΔG; static only.",
-            decision_trace=["rule: stability_or_core → folding_stability_hydrophobic_core"],
+            limits="FoldX ΔΔG is a protein stability estimate on prepared 3NKS; not cofactor binding or clinical outcome.",
+            decision_trace=[
+                f"rule: stability_or_core → folding_stability_hydrophobic_core (band={band})"
+            ],
             secondary_hypotheses=sec,
         )
-    # Mock destabilizing: add folding_stability to secondaries only, fall through to default
-    if _destabilizing and stability_mock:
+    if _folding_secondary and stability_mock:
         secondary.append("folding_stability_hydrophobic_core")
+
+    if _folding_secondary and not _folding_primary:
+        if "folding_stability_hydrophobic_core" not in secondary:
+            secondary.append("folding_stability_hydrophobic_core")
 
     # 5. default -> unknown_mechanism
     # Filter secondaries to those with evidence; build evidence table for report
-    sec_filtered = _filter_secondaries_by_evidence(secondary, context, variant_record)
-    evidence = _default_evidence(variant_record, context, sec_filtered)
+    sec_filtered = _filter_secondaries_by_evidence(secondary, context, variant_record, stability_result)
+    evidence = _default_evidence(variant_record, context, sec_filtered, stability_result)
     return MechanismHypothesis(
         class_="unknown_mechanism",
         confidence="low",
@@ -249,10 +263,21 @@ def _has_secondary_evidence_active_site(ctx: ContextFeatures) -> bool:
     return bool(getattr(ctx, "is_in_active_site_residue_set", False))
 
 
+def _stability_evidence(stability_result: StabilityResult) -> list[dict]:
+    ev = [
+        {"signal": "ddg", "value": round(stability_result.ddg, 5)},
+        {"signal": "stability_signal_band", "value": stability_result.stability_signal_band},
+    ]
+    if stability_result.flags:
+        ev.append({"signal": "flags", "value": stability_result.flags})
+    return ev
+
+
 def _filter_secondaries_by_evidence(
     secondaries: list[str],
     context: ContextFeatures | None,
     variant_record: VariantRecord,
+    stability_result: StabilityResult | None = None,
 ) -> list[str]:
     """Retain only secondaries that have at least one concrete evidence item."""
     if not context:
@@ -266,7 +291,8 @@ def _filter_secondaries_by_evidence(
         elif s == "active_site_region_perturbation" and _has_secondary_evidence_active_site(context):
             out.append(s)
         elif s == "folding_stability_hydrophobic_core":
-            out.append(s)  # Evidence comes from stability_result, not context
+            if stability_result and stability_result.stability_signal_band:
+                out.append(s)
         else:
             pass  # drop if no evidence
     return out
@@ -276,6 +302,7 @@ def _default_evidence(
     variant_record: VariantRecord,
     context: ContextFeatures | None,
     secondaries: list[str],
+    stability_result: StabilityResult | None = None,
 ) -> list[dict]:
     """Build evidence table for default (unknown) branch from context and secondaries."""
     ev: list[dict] = []
@@ -301,4 +328,6 @@ def _default_evidence(
         if d is not None:
             ev.append({"signal": "min_dist_to_active_site_residue_atoms_angstrom_excl_self", "value": round(d, 2)})
         ev.append({"signal": "is_in_active_site_residue_set", "value": getattr(context, "is_in_active_site_residue_set", False)})
+    if stability_result and stability_result.backend == "foldx":
+        ev.extend(_stability_evidence(stability_result))
     return ev

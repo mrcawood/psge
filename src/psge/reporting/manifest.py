@@ -12,6 +12,7 @@ def emit_run_manifest(
     config_hash: str,
     backend_status: dict | None = None,
     mechanism_thresholds: dict | None = None,
+    foldx_provenance: dict | None = None,
 ) -> Path:
     """Emit run_manifest.json with timestamp, input, config hash, backend_status, thresholds."""
     from psge.utils.backend_status import get_backend_status
@@ -29,6 +30,8 @@ def emit_run_manifest(
     }
     if mechanism_thresholds:
         manifest["mechanism_thresholds"] = mechanism_thresholds
+    if foldx_provenance:
+        manifest["foldx_provenance"] = foldx_provenance
     path = results_dir / "run_manifest.json"
     with open(path, "w") as f:
         json.dump(manifest, f, indent=2)

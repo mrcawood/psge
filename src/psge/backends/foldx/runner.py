@@ -6,9 +6,10 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from psge.backends.foldx.audit import audit_foldx_run, build_foldx_provenance
 from psge.core.models import Config, StabilityResult, StructurePair
 from psge.utils.pdb_distances import get_pdb_residue_for_foldx
-from psge.utils.variant_parse import variant_position
+from psge.utils.stability_bands import qualifies_folding_primary, stability_signal_band
 
 
 def detect_foldx(foldx_path: str | None = None) -> str | None:
@@ -60,7 +61,7 @@ def _ensure_pdb(structure_path: Path, work_dir: Path) -> Path:
             shutil.copy2(structure_path, out_pdb)
         return out_pdb
 
-    from Bio.PDB import MMCIFParser, PDBIO
+    from Bio.PDB import PDBIO, MMCIFParser
 
     parser = MMCIFParser(QUIET=True)
     struct = parser.get_structure("s", str(structure_path))
@@ -115,7 +116,7 @@ def run_foldx_buildmodel(
     mutation_foldx: str,
     work_dir: Path,
     foldx_executable: str,
-) -> tuple[float | None, list[Path], str | None]:
+) -> tuple[float | None, list[Path], str | None, Path | None]:
     """
     Run FoldX BuildModel for a single mutation.
 
@@ -149,25 +150,26 @@ def run_foldx_buildmodel(
         _ = result
     except subprocess.CalledProcessError as e:
         err = (e.stderr or e.stdout or str(e))[:500]
-        return (None, [mut_file], err)
+        return (None, [mut_file], err, None)
     except subprocess.TimeoutExpired:
-        return (None, [mut_file], "FoldX BuildModel timed out")
+        return (None, [mut_file], "FoldX BuildModel timed out", None)
     except OSError as e:
-        return (None, [mut_file], str(e))
+        return (None, [mut_file], str(e), None)
 
-    dif_files = list(work_dir.glob("Dif_*_BM.fxout"))
-    if not dif_files:
-        dif_files = list(work_dir.glob("Dif_*.fxout"))
+    dif_files = sorted(work_dir.glob("Dif_*_BM.fxout")) + sorted(work_dir.glob("Dif_*.fxout"))
     ddg = None
+    dif_used = None
     for df in dif_files:
-        ddg = _parse_dif_fxout(df)
-        if ddg is not None:
+        parsed = _parse_dif_fxout(df)
+        if parsed is not None:
+            ddg = parsed
+            dif_used = df
             break
 
     output_paths = list(work_dir.glob("*.fxout")) + [mut_file]
     if ddg is None:
-        return (None, output_paths, "Could not parse FoldX Dif output")
-    return (ddg, output_paths, None)
+        return (None, output_paths, "Could not parse FoldX Dif output", None)
+    return (ddg, output_paths, None, dif_used)
 
 
 def _parse_dif_fxout(path: Path) -> float | None:
@@ -293,20 +295,72 @@ def compute_foldx_ddg(
     shutil.copy2(repaired_pdb, work_dir / repaired_pdb.name)
     build_pdb = work_dir / repaired_pdb.name
 
-    ddg, intermediates, err = run_foldx_buildmodel(
+    ddg, intermediates, err, dif_used = run_foldx_buildmodel(
         build_pdb, mutation_foldx, work_dir, foldx_exe
+    )
+
+    mutant_paths = sorted(work_dir.glob("*_1.pdb"))
+    band = stability_signal_band(ddg) if ddg is not None else None
+    audit_passed, audit_notes = audit_foldx_run(
+        variant_parsed=variant_parsed,
+        uniprot_pos=pos,
+        chain_id=chain_id,
+        pdb_resnum=pdb_resnum,
+        wt_aa=wt_aa,
+        mutation_foldx=mutation_foldx,
+        ddg=ddg,
+        dif_path=dif_used,
+        repaired_pdb_path=repaired_pdb,
+        mutant_glob=mutant_paths,
+    )
+    structure_source = getattr(config, "structure_source", "pdb_first")
+    provenance = build_foldx_provenance(
+        wt_path=wt_path,
+        structure_source=structure_source,
+        chain_id=chain_id,
+        uniprot_pos=pos,
+        pdb_resnum=pdb_resnum,
+        mapping_status="exact",
+        mutation_foldx=mutation_foldx,
+        foldx_version=version,
+        foldx_status="success" if ddg is not None else "failed",
+        repaired_pdb_path=repaired_pdb,
+        dif_path=dif_used,
+        mutant_paths=mutant_paths,
+        ddg=ddg,
+        audit_passed=audit_passed if ddg is not None else None,
+        audit_notes=audit_notes,
     )
 
     if ddg is None:
         return (
-            StabilityResult(ddg=0.0, flags=[], backend="foldx_failed", foldx_version=version),
+            StabilityResult(
+                ddg=0.0,
+                flags=[],
+                backend="foldx_failed",
+                foldx_version=version,
+                foldx_provenance=provenance,
+            ),
             version,
             intermediates,
         )
 
-    flags = ["destabilizing"] if ddg >= 2.0 else []
+    flags = []
+    if qualifies_folding_primary(band, audit_passed):
+        flags.append("destabilizing")
+    elif band in ("borderline_destabilizing", "weak_to_moderate"):
+        flags.append("stability_signal_recorded")
+
     return (
-        StabilityResult(ddg=ddg, flags=flags, backend="foldx", foldx_version=version),
+        StabilityResult(
+            ddg=ddg,
+            flags=flags,
+            backend="foldx",
+            foldx_version=version,
+            stability_signal_band=band,
+            audit_passed=audit_passed,
+            foldx_provenance=provenance,
+        ),
         version,
         intermediates,
     )

@@ -6,7 +6,6 @@ import pytest
 
 from psge.backends.foldx.runner import _parse_dif_fxout, detect_foldx
 
-
 FIXTURES = Path(__file__).parent / "fixtures"
 FOLDX_DIF_SAMPLE = FIXTURES / "foldx_dif_sample.fxout"
 FOLDX_DIF_REPAIR = FIXTURES / "foldx_dif_repair.fxout"

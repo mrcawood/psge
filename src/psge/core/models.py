@@ -60,8 +60,11 @@ class StabilityResult:
 
     ddg: float
     flags: list[str]
-    backend: str = "mock"  # "mock" | "foldx" | "rosetta"
-    foldx_version: str | None = None  # When backend=foldx, for run_manifest
+    backend: str = "mock"  # "mock" | "foldx" | "rosetta" | "foldx_failed" | "not_available"
+    foldx_version: str | None = None
+    stability_signal_band: str | None = None
+    audit_passed: bool | None = None
+    foldx_provenance: dict | None = None
 
 
 @dataclass

@@ -9,10 +9,14 @@ Atom selection: protein standard AAs only (excludes HETATMs) for consistency.
 """
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from Bio.PDB import MMCIFParser, PDBParser
 from Bio.PDB.Polypeptide import is_aa
 from Bio.PDB.SASA import ShrakeRupley
+
+if TYPE_CHECKING:
+    from psge.core.models import StructurePair
 
 
 def _get_parser(path: Path):

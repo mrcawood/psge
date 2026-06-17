@@ -37,17 +37,40 @@ def run(variant: str, config: Config) -> VariantRecord:
     hypothesis = stages.mechanism_classifier(
         variant_record, delta, stability_result, context, config, backend_status
     )
+    from psge.reporting.interpretation import apply_variant_interpretation
+
+    hypothesis.interpretation = apply_variant_interpretation(
+        variant_record,
+        hypothesis.interpretation,
+        mechanism_class=hypothesis.class_,
+        stability_result=stability_result,
+        context=context,
+    )
     skipped = _skipped_steps(variant_record, structure_pair)
     stages.reporting(variant_record, hypothesis, config, skipped, backend_status, delta, stability_result)
 
     config_hash = _config_hash(config)
     results_path = Path(config.results_dir).resolve()
     from psge.pipeline.mechanism import CONTACT_ANGSTROM, NEAR_ANGSTROM
+    from psge.utils.stability_bands import BAND_ORDER
+
     mechanism_thresholds = {
         "contact_threshold_angstrom": CONTACT_ANGSTROM,
         "near_threshold_angstrom": NEAR_ANGSTROM,
+        "stability_signal_bands": BAND_ORDER,
+        "stability_primary_minimum_band": "destabilizing",
+        "borderline_band": "borderline_destabilizing",
+        "policy_note": "provisional Phase 1.6d bands; not calibrated to literature",
     }
-    emit_run_manifest(results_path, variant, config_hash, backend_status, mechanism_thresholds)
+    foldx_prov = stability_result.foldx_provenance if stability_result else None
+    emit_run_manifest(
+        results_path,
+        variant,
+        config_hash,
+        backend_status,
+        mechanism_thresholds,
+        foldx_provenance=foldx_prov,
+    )
 
     return variant_record
 

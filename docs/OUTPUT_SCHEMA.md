@@ -1,12 +1,12 @@
 # PSGE Output Schema
 
-**Purpose:** Structure and meaning of PSGE outputs.
+**Purpose:** Structure and meaning of PSGE outputs (Phase 1.6d).
 
 ---
 
 ## 1. summary.json
 
-Machine-readable output per variant. Written to `results/<variant>/summary.json`.
+Machine-readable output per variant. Written to `results/<variant>/summary.json` (or panel subdirs).
 
 ### Top-level fields
 
@@ -16,74 +16,83 @@ Machine-readable output per variant. Written to `results/<variant>/summary.json`
 | `input_hash` | string | SHA-256 of variant string |
 | `mechanism_class` | string | Primary mechanism class |
 | `confidence` | string | `plausible`, `low`, `low (membership-only)` |
-| `evidence_table` | array | List of `{signal, value}` evidence items |
+| `evidence_table` | array | Enriched evidence rows (see below) |
+| `evidence_summary` | object | Report-level evidence basis (Phase 1.6d) |
+| `stability_signal_band` | string | FoldX band when applicable |
+| `foldx_provenance` | object | FoldX run metadata when applicable |
 | `interpretation` | string | Human-readable interpretation text |
 | `limits` | string | Explicit limits and caveats |
-| `decision_trace` | array | Rules that fired (for transparency) |
+| `decision_trace` | array | Rules that fired |
 | `secondary_hypotheses` | array | Additional plausible mechanism classes |
 | `skipped_steps` | array | Steps skipped and reason |
-| `backend_status` | object | Backend status (see below) |
+| `backend_status` | object | Backend status |
 | `tool_versions` | object | `{"psge": "0.1.0"}` |
 
-### evidence_table
+### evidence_table (Phase 1.6d)
 
-Each item has:
-- `signal` (string): Evidence name (e.g. `min_dist_to_fad_atoms_angstrom`)
-- `value`: Numeric, boolean, or string
+Each row includes:
 
-Common signals:
+| Field | Description |
+|-------|-------------|
+| `signal` | Evidence name |
+| `value` | Numeric, boolean, or string |
+| `evidence_type` | e.g. `structural_proximity`, `foldx_ddg`, `sasa_context`, `curated_site_membership` |
+| `evidence_tier` | e.g. `pdb_context_only`, `foldx_stability_prediction` |
+| `species_context` | Usually `human` |
+| `source_id` | e.g. `3NKS`, `FoldX_5_on_3NKS`, `sites_yaml_provisional` |
+| `interpretation` | Optional band or caveat |
 
-| Signal | Description |
-|--------|-------------|
-| `contact_threshold_angstrom` | Cofactor contact threshold (6.0 Å) |
-| `near_threshold_angstrom` | Active-site near threshold (8.0 Å) |
-| `min_dist_to_fad_atoms_angstrom` | Min 3D distance to FAD atoms |
-| `min_dist_to_inhibitor_atoms_angstrom` | Min 3D distance to inhibitor (ACJ) |
-| `min_dist_to_active_site_residue_atoms_angstrom_excl_self` | Min distance to other site residues |
-| `is_in_fad_residue_set` | Residue in FAD residue set |
-| `is_in_active_site_residue_set` | Residue in active-site set |
-| `in_targeting_region` | Residue in targeting region |
-| `pos` | Variant position (UniProt) |
-| `n_terminal_targeting_signal_end` | End of targeting region (from knowledge) |
+### evidence_summary
+
+| Field | Description |
+|-------|-------------|
+| `overall_evidence_basis` | List of tiers present |
+| `highest_evidence_tier` | Highest tier in this report |
+| `species_context` | `human` for current PPOX panel |
+| `clinical_interpretation` | Always `false` |
+| `sources` | Minimal structured source entries |
+| `threshold_policy` | e.g. `provisional_bands_v1_6d` |
 
 ### backend_status
 
 | Field | Values | Meaning |
 |-------|--------|---------|
 | `structure_backend` | `pdb`, `mock`, `esmfold` | WT structure source |
-| `stability_backend` | `mock`, `foldx` | Stability computation |
-| `delta_metrics` | `real_rmsd` | RMSD from real or mock |
-| `sasa` | `not_implemented` | SASA not yet implemented |
+| `stability_backend` | `mock`, `foldx`, `foldx_failed`, `not_available` | Stability backend |
+| `delta_metrics` | `real_rmsd` | RMSD computation |
+| `sasa` | `biopython_shrake_rupley`, `not_implemented` | SASA backend |
+| `foldx_version` | string | When FoldX used |
 
 ---
 
 ## 2. run_manifest.json
-
-Provenance and run metadata. Written to `results/<variant>/run_manifest.json`.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `timestamp` | string | ISO 8601 UTC |
 | `input` | string | Variant string |
 | `input_hash` | string | SHA-256 of variant |
-| `config_hash` | string | Hash of config (gene, backends, structure_source) |
+| `config_hash` | string | Hash of config |
 | `compute_profile` | string | `local` |
 | `backend_status` | object | Same as summary.json |
-| `mechanism_thresholds` | object | `contact_threshold_angstrom`, `near_threshold_angstrom` |
+| `mechanism_thresholds` | object | Contact/near Å thresholds + stability bands |
+| `foldx_provenance` | object | Present when FoldX ran |
 
 ---
 
 ## 3. report.md
 
-Human-readable report. Markdown with:
+Sections:
 
-- Important context and limitations (read first)
-- Mechanism hypothesis (class, confidence, secondaries)
+- Important context and limitations
+- Evidence basis (report-level tiers)
+- Mechanism hypothesis (class, confidence, secondaries, stability band)
 - Classifier decision trace
-- Interpretation
-- Evidence (bulleted list)
+- Interpretation (variant-specific conservative wording when defined)
+- Evidence (rows with type/tier metadata)
+- FoldX provenance (when applicable)
 - Limits
 - Backend status
 - Skipped steps
 
-See `results/R59W/report.md` for an example.
+SASA: local residue and patch values only. `sasa_source_pairing: incomparable` when WT is PDB and mutant is predicted.

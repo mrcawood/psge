@@ -11,7 +11,6 @@ from psge.utils.sasa import (
     compute_sasa_total,
 )
 
-
 FIXTURES = Path(__file__).parent / "fixtures"
 MINIMAL_PDB = FIXTURES / "minimal.pdb"
 

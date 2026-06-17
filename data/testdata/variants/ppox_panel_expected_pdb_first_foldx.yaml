@@ -1,0 +1,29 @@
+# pdb_first + FoldX panel expectations (Phase 1.6d)
+# Used only when FoldX is available; tests skip otherwise.
+
+- variant: R59W
+  expected_primary: cofactor_binding_perturbation
+  expected_stability_signal_band: borderline_destabilizing
+  expected_secondary_includes: [folding_stability_hydrophobic_core]
+
+- variant: I12T
+  expected_primary: folding_stability_hydrophobic_core
+  expected_stability_signal_band: destabilizing
+  expected_secondary_includes: [targeting_signal_perturbation]
+
+- variant: R152C
+  expected_primary: unknown_mechanism
+  expected_stability_signal_band: weak_to_moderate
+
+- variant: G358R
+  expected_primary: folding_stability_hydrophobic_core
+  expected_stability_signal_band: extreme_destabilizing_requires_audit
+  audit_required: true
+
+- variant: "78insC"
+  expected_primary: truncation_misexpression
+  foldx_skipped: true
+
+- variant: "IVS2-2 a→c"
+  expected_primary: truncation_misexpression
+  foldx_skipped: true

@@ -31,9 +31,6 @@ def compute_delta(
         local_rmsd = float("nan")
 
     sasa_delta = 0.0
-    sasa_total_wt = None
-    sasa_total_mut = None
-    delta_sasa_total = None
     sasa_residue_wt = None
     sasa_residue_mut = None
     delta_sasa_residue = None

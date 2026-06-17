@@ -1,91 +1,81 @@
-# PSGE Scientific Validation (M6b)
+# PSGE Scientific Validation
 
-**Purpose:** Document real metrics, curated knowledge, mechanism hypotheses, and limitations for scientific integration.
+**Purpose:** Real metrics, curated knowledge, mechanism hypotheses, and limitations.
 
-**Scope:** Structural analysis of PPOX variants (UniProt P50336). Non-clinical, research-grade.
-
----
-
-## Panel Variants and Expected Mechanisms
-
-| Variant | Expected Class | Rationale (brief) |
-|---------|----------------|-------------------|
-| R59W | substrate_binding_impairment | Near FAD/active site; affects cofactor binding |
-| R152C | structural_destabilization | Destabilizing; ddg threshold |
-| G358R | structural_destabilization | Destabilizing; ddg threshold |
-| 78insC | truncation_misexpression | Frameshift; non-structural track |
-| IVS2-2 a→c | truncation_misexpression | Splice variant; non-structural track |
-| I12T | mitochondrial_targeting_defect | In N-terminal targeting signal (res 12; LXXXIXXL motif) |
+**Scope:** PPOX (UniProt P50336). Non-clinical, research-grade. Phase 1.6d.
 
 ---
 
-## Real Metrics (M6b)
+## Panel (pdb_first + FoldX expectations)
 
-### RMSD (Implemented)
-- **Global RMSD:** Cα backbone superimposition via BioPython. Measures overall structural change.
-- **Local RMSD:** Per-residue window (default radius 5) around the variant position. Measures local conformation.
-- **Source:** `utils/pdb_rmsd.py` (BioPython Superimposer).
+See `data/testdata/variants/ppox_panel_expected_pdb_first_foldx.yaml` for enforced FoldX behavior when the binary is available. Mock/`predict_first` expectations remain in `test_panel_t2.py`.
 
-### SASA (Phase 1.6a — Implemented)
-- **Method:** BioPython Shrake-Rupley algorithm (`Bio.PDB.SASA.ShrakeRupley`).
-- **Fields:** `sasa_total_wt`, `sasa_total_mut`, `delta_sasa_total`, `sasa_residue_wt[pos]`, `sasa_residue_mut[pos]`, `delta_sasa_residue`, optional `sasa_patch_8A` (local patch within 8 Å of mutation).
-- **Source:** `utils/sasa.py`. `backend_status.sasa = "biopython_shrake_rupley"` when computed.
-- **Mapping:** When residue not in structure, SASA outputs are null and `sasa_mapping_status` is set (e.g. `residue_not_in_structure`).
-- **Classifier:** SASA is evidence only; not yet used in primary decision logic.
-
-### Stability (Phase 1.6b — FoldX optional)
-- **FoldX:** When executable is available (PATH or `FOLDX_PATH`), real ΔΔG via BuildModel on WT structure (3NKS). `backend_status.stability_backend = "foldx"`; `foldx_version` in run_manifest.
-- **Mock fallback:** When FoldX not present, `stability_backend = "mock"`; placeholder ΔΔG. Pipeline does not break.
-- **Classifier policy:** `folding_stability_hydrophobic_core` as **primary** only when `stability_backend` is `foldx` (or rosetta later). Mock ddG does not drive primary classification; stability-derived hypotheses remain secondary/unknown when stability is unavailable.
+| Variant | Primary (pdb_first + FoldX) | Stability band |
+|---------|----------------------------|----------------|
+| R59W | cofactor_binding_perturbation | borderline_destabilizing |
+| I12T | folding_stability_hydrophobic_core | destabilizing |
+| R152C | unknown_mechanism | weak_to_moderate |
+| G358R | folding_stability_hydrophobic_core | extreme_destabilizing_requires_audit |
+| 78insC / IVS2-2 | truncation_misexpression | FoldX skipped |
 
 ---
 
-## Curated PPOX Knowledge
+## Real metrics
 
-**Reference:** Qin et al. (2011), PPOX structure and mechanism.
+### RMSD
+BioPython Superimposer on WT vs mutant structures. `delta_metrics: real_rmsd`.
 
-### FAD / active site
-- Residues: 9–14 (targeting), 54–63 (FAD pocket), 147–150, 173, 318–320.
+### SASA (Phase 1.6a, local-only)
+BioPython Shrake-Rupley. Reports residue-level and 8 Å patch SASA on WT; residue delta only when `sasa_source_pairing: same_backend`. Does not report global `sasa_total_wt/mut` deltas when structures are incomparable (e.g. `pdb_first`).
 
-### N-terminal targeting signal
-- Residues 1–28 (independently functioning signal; LXXXIXXL motif Leu-8, Ile-12, Leu-15). PMID:12556518
-- Residues 1–17 minimal for efficient targeting in GFP fusion constructs. PMID:16621625
-- **Note:** PPOX targeting is not only N-terminal; internal signals exist (e.g. residues 25–477, PMID:12556518; 151–175 interacts with first 150, PMID:14535846). Phase 1 rule uses N-terminal only.
+### Stability (Phase 1.6c–1.6d, FoldX)
+Protein-only repaired 3NKS input. FAD/ACJ excluded from FoldX run. `configs/default.yaml` `foldx_path` or `FOLDX_PATH`.
 
-### Membrane region
-- Residues 100–120 (approximate transmembrane).
+#### Provisional ΔΔG bands (Phase 1.6d)
 
-**Source:** `knowledge/ppox/sites.yaml`.
+| Band | ΔΔG (kcal/mol) |
+|------|----------------|
+| none_or_weak | &lt; 1.0 |
+| weak_to_moderate | 1.0 – 2.0 |
+| borderline_destabilizing | 2.0 – 2.5 |
+| destabilizing | 2.5 – 5.0 |
+| strong_destabilizing | 5.0 – 10.0 |
+| extreme_destabilizing_requires_audit | ≥ 10.0 |
+
+Bands are provisional. Not calibrated to literature in Phase 1.6d.
+
+#### Classifier policy
+- Rule precedence unchanged: cofactor contact before stability primary.
+- `folding_stability_hydrophobic_core` primary only when FoldX succeeded and band is at least `destabilizing`, with audit for extreme values.
+- `borderline_destabilizing` and `weak_to_moderate` may appear as secondary or evidence only.
+- Mock ΔΔG never drives primary classification.
 
 ---
 
-## Mechanism Hypotheses and Rule Precedence
+## Curated PPOX knowledge
 
-1. **non_structural_track** → truncation_misexpression (truncation/splice only).
-2. **in_targeting_region** → mitochondrial_targeting_defect (targeting before destabilization).
-3. **destabilizing_ddg_or_flags** → structural_destabilization (when stability is real or mock-tagged).
-4. **near_fad_or_active_site** → substrate_binding_impairment.
-5. **default** → unknown_mechanism (low confidence; honest when no rule matches).
+**Reference:** Qin et al. (2011); structure 3NKS.
 
-When primary is destabilization and variant is near FAD/active site: secondary_hypotheses = [substrate_binding_impairment]. When primary is substrate_binding and also destabilizing: secondary_hypotheses = [structural_destabilization].
+FAD/active-site residue lists in `sites.yaml` are provisional. Pete has not formally endorsed exact lists.
+
+Targeting: N-terminal region 1–28 used in rules; internal targeting signals exist in literature and are not fully modeled.
+
+---
+
+## Evidence tiers (Phase 1.6d)
+
+| Tier | Meaning |
+|------|---------|
+| pdb_context_only | 3NKS distances, SASA, curated site membership |
+| foldx_stability_prediction | FoldX BuildModel ΔΔG on prepared protein model |
+| literature_mechanistic | Deferred (Phase 1.6e+) |
+| functional_assay | Deferred |
 
 ---
 
 ## Limitations
 
-- **Structure:** Mock by default; ESMFold optional when installed. No experimental PDB for many variants.
-- **Stability:** Mock ddg; no FoldX/Rosetta integration yet.
-- **SASA:** Placeholder (0.0); not used in classifier.
-- **Contacts:** `contact_deltas` placeholder; not integrated.
-- **Taxonomy:** Expert-informed hypothesis structure, not ground truth. Reports use "suggested" wording.
-
----
-
-## Backend Status Fields
-
-| Field | Values | Meaning |
-|-------|--------|---------|
-| structure_backend | mock, esmfold | Source of WT/mutant PDBs |
-| stability_backend | mock | ddg source |
-| delta_metrics | real_rmsd | RMSD is real when structure is real |
-| sasa | not_implemented | SASA delta is placeholder |
+- Static structure only; no expression, splicing, or clinical inference.
+- FoldX ΔΔG is not cofactor binding, catalytic activity, or clinical outcome.
+- Inhibitor (ACJ) proximity does not prove substrate binding.
+- Unknown/low-confidence output is acceptable.

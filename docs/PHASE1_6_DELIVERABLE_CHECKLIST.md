@@ -114,8 +114,10 @@ Evidence table would include `{"signal": "ddg", "value": <real ΔΔG>}` when fol
 ## Test Results
 
 ```
-30 passed, 1 skipped in ~32s
+36 passed, 1 skipped
 ```
+
+- **Phase 1.6d:** `test_stability_bands.py`, `test_panel_foldx.py` (pdb_first + FoldX when available)
 
 - **SASA:** `test_sasa_total_returns_non_null_for_known_structure`, `test_sasa_identical_inputs_delta_near_zero`, `test_sasa_residue_returns_for_mapped_position`
 - **FoldX:** `test_parse_dif_fxout` (fixture), `test_foldx_integration_skip_if_missing` (skipped when FoldX not installed)
