@@ -88,7 +88,7 @@ test_panel_pdb_first_foldx_expectations: pass on talos
 R59W run twice via `compute_foldx_ddg`: ΔΔG 2.02263 both times; band stable. Cached RepairPDB/BuildModel outputs reused deterministically.
 
 ### G358R audit
-- UniProt 358 → PDB A358, mutation `RG358R`
+- UniProt 358 → PDB A358, mutation `GA358R`
 - RepairPDB and BuildModel completed
 - `Dif_*.fxout` parsed; `audit_passed: true`
 - Note: ΔΔG > 10 kcal/mol flagged for manual review in audit notes
