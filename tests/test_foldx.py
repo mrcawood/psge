@@ -9,6 +9,7 @@ from psge.backends.foldx.runner import _parse_dif_fxout, detect_foldx
 
 FIXTURES = Path(__file__).parent / "fixtures"
 FOLDX_DIF_SAMPLE = FIXTURES / "foldx_dif_sample.fxout"
+FOLDX_DIF_REPAIR = FIXTURES / "foldx_dif_repair.fxout"
 
 
 def test_parse_dif_fxout():
@@ -18,6 +19,15 @@ def test_parse_dif_fxout():
     ddg = _parse_dif_fxout(FOLDX_DIF_SAMPLE)
     assert ddg is not None
     assert abs(ddg - 1.23) < 0.01
+
+
+def test_parse_dif_fxout_foldx5_banner():
+    """Parse real FoldX 5.x Dif output with header banner lines."""
+    if not FOLDX_DIF_REPAIR.exists():
+        pytest.skip("fixtures/foldx_dif_repair.fxout not found")
+    ddg = _parse_dif_fxout(FOLDX_DIF_REPAIR)
+    assert ddg is not None
+    assert abs(ddg - 2.02263) < 0.0001
 
 
 def test_parse_dif_fxout_missing_file():

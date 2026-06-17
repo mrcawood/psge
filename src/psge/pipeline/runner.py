@@ -38,7 +38,7 @@ def run(variant: str, config: Config) -> VariantRecord:
         variant_record, delta, stability_result, context, config, backend_status
     )
     skipped = _skipped_steps(variant_record, structure_pair)
-    stages.reporting(variant_record, hypothesis, config, skipped, backend_status, delta)
+    stages.reporting(variant_record, hypothesis, config, skipped, backend_status, delta, stability_result)
 
     config_hash = _config_hash(config)
     results_path = Path(config.results_dir).resolve()
@@ -69,6 +69,7 @@ def run_panel(panel_path: Path, config: Config) -> list[VariantRecord]:
             stability_backend=config.stability_backend,
             cache_dir=config.cache_dir,
             structure_source=getattr(config, "structure_source", "predict_first"),
+            foldx_path=config.foldx_path,
         )
         rec = run(variant, variant_config)
         records.append(rec)

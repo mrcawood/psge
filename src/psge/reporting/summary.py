@@ -30,6 +30,18 @@ def _sasa_evidence(delta) -> list[dict]:
     return ev
 
 
+def _stability_evidence(stability_result, backend_status: dict | None) -> list[dict]:
+    """FoldX ΔΔG evidence when real stability backend ran (even if not primary driver)."""
+    if stability_result is None:
+        return []
+    if (backend_status or {}).get("stability_backend") != "foldx":
+        return []
+    ev = [{"signal": "ddg", "value": round(stability_result.ddg, 5)}]
+    if stability_result.flags:
+        ev.append({"signal": "flags", "value": stability_result.flags})
+    return ev
+
+
 def emit_summary(
     results_dir: Path,
     variant: str,
@@ -38,6 +50,7 @@ def emit_summary(
     skipped_steps: list[str],
     backend_status: dict | None = None,
     delta=None,
+    stability_result=None,
 ) -> Path:
     """Emit summary.json (machine-readable). Phase 1.6: includes SASA when available."""
     from psge.utils.backend_status import get_backend_status
@@ -46,7 +59,12 @@ def emit_summary(
     results_dir.mkdir(parents=True, exist_ok=True)
     input_hash = hashlib.sha256(variant.encode()).hexdigest()
     sasa_ev = _sasa_evidence(delta)
+    stability_ev = _stability_evidence(stability_result, backend_status)
     evidence_table = list(hypothesis.evidence_table)
+    existing_signals = {e.get("signal") for e in evidence_table}
+    for row in stability_ev:
+        if row.get("signal") not in existing_signals:
+            evidence_table.append(row)
     evidence_table.extend(sasa_ev)
     summary = {
         "variant": variant,
@@ -64,6 +82,8 @@ def emit_summary(
     }
     if sasa_ev:
         summary["sasa"] = {e["signal"]: e["value"] for e in sasa_ev}
+    if stability_ev:
+        summary["stability"] = {e["signal"]: e["value"] for e in stability_ev}
     path = results_dir / "summary.json"
     with open(path, "w") as f:
         json.dump(summary, f, indent=2)
@@ -77,6 +97,7 @@ def emit_report(
     skipped_steps: list[str],
     backend_status: dict | None = None,
     delta=None,
+    stability_result=None,
 ) -> Path:
     """Emit report.md (human-readable)."""
     from psge.utils.backend_status import get_backend_status
@@ -142,6 +163,10 @@ def emit_report(
     ])
     for row in hypothesis.evidence_table:
         lines.append(f"- {row.get('signal', '')}: {row.get('value', '')}")
+    for row in _stability_evidence(stability_result, status):
+        sig = row.get("signal", "")
+        if not any(r.get("signal") == sig for r in hypothesis.evidence_table):
+            lines.append(f"- {sig}: {row.get('value', '')}")
     for row in _sasa_evidence(delta):
         lines.append(f"- {row.get('signal', '')}: {row.get('value', '')}")
     lines.extend([
@@ -156,7 +181,12 @@ def emit_report(
         f"- stability_backend: {status.get('stability_backend', '?')}",
         f"- delta_metrics: {status.get('delta_metrics', '?')}",
         f"- sasa: {status.get('sasa', '?')}",
-        "",
+    ])
+    if status.get("foldx_version"):
+        lines.extend([
+            f"- foldx_version: {status.get('foldx_version')}",
+        ])
+    lines.extend([
         mock_note,
         "",
         "## Skipped Steps",

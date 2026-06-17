@@ -85,7 +85,7 @@ def stability(
     if structure_pair is None:
         return None
     from psge.backends.stability import get_stability_backend
-    backend = get_stability_backend(config.stability_backend)
+    backend = get_stability_backend(config.stability_backend, config.foldx_path)
     from psge.utils.variant_parse import variant_position
     pos = variant_position(variant_record.parsed)
     return backend(structure_pair, pos, config, variant_record.parsed)
@@ -123,6 +123,7 @@ def reporting(
     skipped_steps: list[str] | None = None,
     backend_status: dict | None = None,
     delta: DeltaFeatures | None = None,
+    stability_result: StabilityResult | None = None,
 ) -> None:
     """Reporting: summary.json, report.md (PRD §6). Phase 1.6: delta for SASA evidence."""
     from psge.reporting.summary import emit_report, emit_summary
@@ -139,6 +140,7 @@ def reporting(
         skipped,
         backend_status,
         delta,
+        stability_result,
     )
     emit_report(
         results_dir,
@@ -147,4 +149,5 @@ def reporting(
         skipped,
         backend_status,
         delta,
+        stability_result,
     )

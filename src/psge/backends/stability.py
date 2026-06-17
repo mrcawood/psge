@@ -6,12 +6,12 @@ from psge.core.models import Config, StabilityResult, StructurePair
 from psge.utils.variant_parse import variant_position
 
 
-def get_stability_backend(backend: str):
+def get_stability_backend(backend: str, foldx_path: str | None = None):
     """Return stability backend. Phase 1.6b: FoldX when available and requested."""
     if backend == "foldx":
         try:
             from psge.backends.foldx.runner import detect_foldx
-            if detect_foldx():
+            if detect_foldx(foldx_path):
                 return _foldx_stability
         except Exception:
             pass
@@ -43,11 +43,17 @@ def _foldx_stability(
     config: Config,
     variant_parsed: str = "",
 ) -> StabilityResult:
-    """FoldX stability: real ΔΔG when executable available."""
+    """FoldX stability: real ΔΔG on experimental PDB WT (pdb_first); mock otherwise."""
+    if struct_pair is None or struct_pair.backend != "pdb":
+        return _mock_stability(struct_pair, pos, config, variant_parsed)
+
     from psge.backends.foldx.runner import compute_foldx_ddg
 
     cache_dir = Path(config.cache_dir) if config.cache_dir else None
-    result, _version, _intermediates = compute_foldx_ddg(
-        struct_pair, pos, variant_parsed, config, cache_dir
-    )
+    try:
+        result, _version, _intermediates = compute_foldx_ddg(
+            struct_pair, pos, variant_parsed, config, cache_dir
+        )
+    except Exception:
+        return StabilityResult(ddg=0.0, flags=[], backend="foldx_failed")
     return result

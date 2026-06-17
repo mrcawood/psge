@@ -17,6 +17,11 @@ data/private/
 data/public/structures/cache/
 data/public/structures/[0-9a-f][0-9a-f]*/
 
+# FoldX license binary (local only; zips may stay untracked)
+foldX/foldx_20270131
+foldX/molecules/
+foldX/yasaraPlugin.zip
+
 # IDE
 .idea/
 .vscode/

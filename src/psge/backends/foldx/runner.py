@@ -1,4 +1,4 @@
-"""FoldX runner for ΔΔG stability (Phase 1.6b)."""
+"""FoldX runner for ΔΔG stability (Phase 1.6b/1.6c)."""
 
 import hashlib
 import re
@@ -19,6 +19,7 @@ def detect_foldx(foldx_path: str | None = None) -> str | None:
     if foldx_path and Path(foldx_path).exists():
         return foldx_path
     import os
+
     env_path = os.environ.get("FOLDX_PATH")
     if env_path and Path(env_path).exists():
         return env_path
@@ -36,7 +37,6 @@ def get_foldx_version(executable: str) -> str | None:
             timeout=10,
         )
         out = (result.stdout or "") + (result.stderr or "")
-        # Common patterns: "FoldX 5", "Version 5.0", etc.
         m = re.search(r"FoldX\s+(\d[\d.]*)", out, re.I)
         if m:
             return m.group(1)
@@ -50,12 +50,16 @@ def get_foldx_version(executable: str) -> str | None:
 
 def _ensure_pdb(structure_path: Path, work_dir: Path) -> Path:
     """
-    Ensure structure is in PDB format. FoldX typically expects PDB.
+    Ensure structure is in PDB format inside work_dir. FoldX expects PDB in pdb-dir.
     Converts mmCIF to PDB if needed.
     """
+    work_dir.mkdir(parents=True, exist_ok=True)
     if structure_path.suffix.lower() == ".pdb":
-        return structure_path
-    # Convert CIF to PDB
+        out_pdb = work_dir / structure_path.name
+        if structure_path.resolve() != out_pdb.resolve():
+            shutil.copy2(structure_path, out_pdb)
+        return out_pdb
+
     from Bio.PDB import MMCIFParser, PDBIO
 
     parser = MMCIFParser(QUIET=True)
@@ -67,37 +71,74 @@ def _ensure_pdb(structure_path: Path, work_dir: Path) -> Path:
     return out_pdb
 
 
+def run_foldx_repair(
+    pdb_path: Path,
+    work_dir: Path,
+    foldx_executable: str,
+    timeout: int = 600,
+) -> Path | None:
+    """
+    Run FoldX RepairPDB. Returns path to repaired PDB or None on failure.
+    Skips repair when output already exists in work_dir.
+    """
+    work_dir.mkdir(parents=True, exist_ok=True)
+    pdb_name = pdb_path.name
+    repaired_name = f"{pdb_path.stem}_Repair.pdb"
+    repaired_path = work_dir / repaired_name
+    if repaired_path.exists():
+        return repaired_path
+
+    cmd = [
+        foldx_executable,
+        "--command=RepairPDB",
+        f"--pdb={pdb_name}",
+        f"--pdb-dir={work_dir}",
+        f"--output-dir={work_dir}",
+    ]
+    try:
+        subprocess.run(
+            cmd,
+            cwd=work_dir,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+        return None
+
+    return repaired_path if repaired_path.exists() else None
+
+
 def run_foldx_buildmodel(
     wt_pdb_path: Path,
     mutation_foldx: str,
     work_dir: Path,
     foldx_executable: str,
-) -> tuple[float | None, list[Path]]:
+) -> tuple[float | None, list[Path], str | None]:
     """
     Run FoldX BuildModel for a single mutation.
 
     mutation_foldx: format WTaa+Chain+PDBresnum+Mutaa, e.g. RA59W
 
-    Returns (ddg_kcal_mol, list of output file paths for audit).
+    Returns (ddg_kcal_mol, output paths for audit, error message if any).
     """
     work_dir.mkdir(parents=True, exist_ok=True)
     mut_file = work_dir / "individual_list.txt"
     mut_file.write_text(f"{mutation_foldx};\n")
 
     pdb_name = wt_pdb_path.name
-    # FoldX 5: FoldX --command=BuildModel --pdb=... --mutant-file=...
-    # pdb-dir must contain the PDB file (work_dir after _ensure_pdb)
     cmd = [
         foldx_executable,
         "--command=BuildModel",
         f"--pdb={pdb_name}",
-        f"--mutant-file=individual_list.txt",
+        "--mutant-file=individual_list.txt",
         f"--pdb-dir={work_dir}",
         f"--output-dir={work_dir}",
     ]
 
     try:
-        subprocess.run(
+        result = subprocess.run(
             cmd,
             cwd=work_dir,
             capture_output=True,
@@ -105,12 +146,15 @@ def run_foldx_buildmodel(
             timeout=300,
             check=True,
         )
+        _ = result
     except subprocess.CalledProcessError as e:
-        return (None, [])
-    except Exception:
-        return (None, [])
+        err = (e.stderr or e.stdout or str(e))[:500]
+        return (None, [mut_file], err)
+    except subprocess.TimeoutExpired:
+        return (None, [mut_file], "FoldX BuildModel timed out")
+    except OSError as e:
+        return (None, [mut_file], str(e))
 
-    # Parse Dif_*.fxout
     dif_files = list(work_dir.glob("Dif_*_BM.fxout"))
     if not dif_files:
         dif_files = list(work_dir.glob("Dif_*.fxout"))
@@ -121,36 +165,39 @@ def run_foldx_buildmodel(
             break
 
     output_paths = list(work_dir.glob("*.fxout")) + [mut_file]
-    return (ddg, output_paths)
+    if ddg is None:
+        return (None, output_paths, "Could not parse FoldX Dif output")
+    return (ddg, output_paths, None)
 
 
 def _parse_dif_fxout(path: Path) -> float | None:
     """
     Parse FoldX Dif_*.fxout for Total Energy (ddG).
-    Format: tab-separated, header row, data rows. Total Energy column.
+    Handles banner lines before the tab-separated header (FoldX 5.x).
     """
     try:
         text = path.read_text()
-        lines = [l.strip() for l in text.splitlines() if l.strip()]
-        if len(lines) < 2:
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        header_idx = None
+        for i, line in enumerate(lines):
+            if "\t" not in line:
+                continue
+            lower = line.lower()
+            if "total" in lower and "energy" in lower:
+                header_idx = i
+                break
+        if header_idx is None or header_idx + 1 >= len(lines):
             return None
-        headers = lines[0].split("\t")
-        # Find Total Energy column (case-insensitive)
+        headers = lines[header_idx].split("\t")
         idx = None
         for i, h in enumerate(headers):
-            if "total" in h.lower() and "energy" in h.lower():
+            hl = h.strip().lower()
+            if hl in ("ddg", "total energy") or ("total" in hl and "energy" in hl):
                 idx = i
                 break
         if idx is None:
-            # Try "DDG" or "ddG"
-            for i, h in enumerate(headers):
-                if h.strip().upper() in ("DDG", "TOTAL ENERGY"):
-                    idx = i
-                    break
-        if idx is None:
-            idx = 1  # Often second column
-        # First data row (after header)
-        parts = lines[1].split("\t")
+            idx = 1
+        parts = lines[header_idx + 1].split("\t")
         if idx >= len(parts):
             return None
         return float(parts[idx])
@@ -158,19 +205,25 @@ def _parse_dif_fxout(path: Path) -> float | None:
         return None
 
 
+def _cache_base(cache_dir: Path | str | None) -> Path:
+    if cache_dir:
+        return Path(cache_dir)
+    return Path(__file__).resolve().parents[4] / "data" / "public" / "structures" / "cache"
+
+
 def compute_foldx_ddg(
     struct_pair: StructurePair,
     pos: int | None,
     variant_parsed: str,
     config: Config,
-    cache_dir: Path | None = None,
+    cache_dir: Path | str | None = None,
 ) -> tuple[StabilityResult, str | None, list[Path]]:
     """
     Compute ΔΔG via FoldX. Uses WT structure (3NKS) and applies mutation.
 
     Returns (StabilityResult, foldx_version, intermediates_paths).
     """
-    foldx_exe = detect_foldx()
+    foldx_exe = detect_foldx(getattr(config, "foldx_path", None))
     if not foldx_exe:
         return (
             StabilityResult(ddg=0.0, flags=[], backend="not_available"),
@@ -181,7 +234,7 @@ def compute_foldx_ddg(
     version = get_foldx_version(foldx_exe)
     if pos is None:
         return (
-            StabilityResult(ddg=0.0, flags=[], backend="mock"),
+            StabilityResult(ddg=0.0, flags=[], backend="foldx_failed", foldx_version=version),
             version,
             [],
         )
@@ -189,7 +242,7 @@ def compute_foldx_ddg(
     wt_path = Path(struct_pair.wt_pdb_path)
     if not wt_path.exists():
         return (
-            StabilityResult(ddg=0.0, flags=[], backend="mock"),
+            StabilityResult(ddg=0.0, flags=[], backend="foldx_failed", foldx_version=version),
             version,
             [],
         )
@@ -200,7 +253,7 @@ def compute_foldx_ddg(
     info = get_pdb_residue_for_foldx(pos, wt_path, uniprot_seq)
     if not info:
         return (
-            StabilityResult(ddg=0.0, flags=[], backend="mock"),
+            StabilityResult(ddg=0.0, flags=[], backend="foldx_failed", foldx_version=version),
             version,
             [],
         )
@@ -209,7 +262,7 @@ def compute_foldx_ddg(
     m = re.match(r"^([A-Z])(\d+)([A-Z])$", variant_parsed.strip(), re.I)
     if not m:
         return (
-            StabilityResult(ddg=0.0, flags=[], backend="mock"),
+            StabilityResult(ddg=0.0, flags=[], backend="foldx_failed", foldx_version=version),
             version,
             [],
         )
@@ -218,27 +271,35 @@ def compute_foldx_ddg(
     wt_aa = wt_aa.upper()
     mutation_foldx = f"{wt_aa}{chain_id}{pdb_resnum}{mut_aa}"
 
-    base_cache = cache_dir or Path(__file__).parent.parent.parent.parent / "data" / "public" / "structures" / "cache"
+    base_cache = _cache_base(cache_dir)
+    wt_hash = hashlib.sha256(str(wt_path.resolve()).encode()).hexdigest()[:16]
+    repair_dir = base_cache / "foldx" / "repair" / wt_hash
+    repair_dir.mkdir(parents=True, exist_ok=True)
+    wt_pdb = _ensure_pdb(wt_path, repair_dir)
+
+    repaired_pdb = run_foldx_repair(wt_pdb, repair_dir, foldx_exe)
+    if not repaired_pdb:
+        return (
+            StabilityResult(ddg=0.0, flags=[], backend="foldx_failed", foldx_version=version),
+            version,
+            list(repair_dir.glob("*.pdb")),
+        )
+
     cache_key = hashlib.sha256(
         f"{wt_path}:{mutation_foldx}:{version}".encode()
     ).hexdigest()[:16]
     work_dir = base_cache / "foldx" / cache_key
+    work_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(repaired_pdb, work_dir / repaired_pdb.name)
+    build_pdb = work_dir / repaired_pdb.name
 
-    wt_pdb = _ensure_pdb(wt_path, work_dir)
-    if not wt_pdb.exists():
-        return (
-            StabilityResult(ddg=0.0, flags=[], backend="mock"),
-            version,
-            [],
-        )
-
-    ddg, intermediates = run_foldx_buildmodel(
-        wt_pdb, mutation_foldx, work_dir, foldx_exe
+    ddg, intermediates, err = run_foldx_buildmodel(
+        build_pdb, mutation_foldx, work_dir, foldx_exe
     )
 
     if ddg is None:
         return (
-            StabilityResult(ddg=0.0, flags=[], backend="mock"),
+            StabilityResult(ddg=0.0, flags=[], backend="foldx_failed", foldx_version=version),
             version,
             intermediates,
         )

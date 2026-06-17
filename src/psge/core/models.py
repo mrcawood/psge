@@ -116,3 +116,4 @@ class Config:
     stability_backend: str = "foldx"
     cache_dir: str | None = None  # None = use default under data/public/structures
     structure_source: str = "pdb_first"  # pdb_first | predict_first (Phase 1.5)
+    foldx_path: str | None = None  # Local FoldX binary; FOLDX_PATH env overrides when set

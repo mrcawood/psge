@@ -45,7 +45,7 @@ def classify(
         secondary.append("targeting_signal_perturbation")
 
     _stab = (backend_status or {}).get("stability_backend", "mock")
-    stability_mock = _stab in ("mock", "not_available")
+    stability_mock = _stab in ("mock", "not_available", "foldx_failed")
     _destabilizing = (
         stability_result
         and (stability_result.ddg >= 2.0 or "destabilizing" in stability_result.flags)

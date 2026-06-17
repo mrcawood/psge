@@ -6,3 +6,6 @@ structure_backend: alphafold  # fallback: esmfold
 stability_backend: foldx
 structure_source: pdb_first   # pdb_first | predict_first (Phase 1.5)
 results_dir: results
+
+# Local FoldX 5.1 binary (license; not in git). FOLDX_PATH env takes precedence.
+foldx_path: foldX/foldx_20270131
